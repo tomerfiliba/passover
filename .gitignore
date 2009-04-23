@@ -1,0 +1,6 @@
+*.out
+*.o
+*.so
+*.pyc
+*.a
+build/
