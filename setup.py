@@ -7,6 +7,7 @@ setup(
     description = "high performane python tracer",
     py_modules = [
         'passover',
+        'test1',
     ],
     ext_modules = [
         Extension("_passover",
@@ -14,9 +15,13 @@ setup(
                 "lib/errors.c",
                 "lib/fmap.c",
                 "lib/hptime.c",
+                "lib/htable.c",
+                "lib/listfile.c",
                 "lib/rotdir.c",
                 "lib/rotrec.c",
                 "tracer/tracer.c",
+                "tracer/rotdir_object.c",
+                "tracer/passover_object.c",
                 "tracer/_passover.c",
             ],
             define_macros = [

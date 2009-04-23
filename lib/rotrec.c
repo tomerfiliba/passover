@@ -44,7 +44,7 @@ static inline errcode_t _rotrec_close_window(rotrec_t * self)
 
 static inline errcode_t _rotrec_open_window(rotrec_t * self)
 {
-	errcode_t retcode = ERR_UNKNWON;
+	errcode_t retcode = ERR_UNKNOWN;
 	char filename[PATH_MAX];
 	int fd;
 	int slot;

@@ -4,40 +4,15 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
-#include "../errors.h"
-#include "tracer.h"
+#include "../lib/errors.h"
+#include "rotdir_object.h"
+#include "passover_object.h"
 
-#define CO_PASSOVER_IGNORED_SINGLE   (0x02000000)
-#define CO_PASSOVER_IGNORED_CHILDREN (0x04000000)
-#define CO_PASSOVER_IGNORED_WHOLE    (CO_PASSOVER_IGNORED_SINGLE | CO_PASSOVER_IGNORED_CHILDREN)
-#define CO_PASSOVER_DETAILED         (0x08000000)
 
-static PyObject * ErrorObject = NULL;
+PyObject * ErrorObject = NULL;
 static PyFunctionObject * _passover_logfunc = NULL;
 static PyCodeObject * _passover_logfunc_code = NULL;
 
-typedef struct
-{
-	PyObject_HEAD
-	pid_t      pid;
-	int        depth;
-	int        ignore_depth;
-	int        active;
-	int        used;
-	tracer_t   info;
-} PassoverObject;
-
-
-#define ERRCODE_TO_PYEXC(expr) \
-	{ \
-		errcode_t code = expr; \
-		if (IS_ERROR(code)) { \
-			if (PyErr_Occurred() == NULL) { \
-				PyErr_SetString(ErrorObject, errcode_get_message(code)); \
-			} \
-			return -1; \
-		} \
-	}
 
 static inline int _tracefunc_pycall_function(PassoverObject * self, PyFrameObject * frame)
 {
@@ -51,10 +26,10 @@ static inline int _tracefunc_pycall_function(PassoverObject * self, PyFrameObjec
 		if (code->co_flags & CO_VARKEYWORDS) {
 			argcount += 1;
 		}
-		return tracer_pyfunc_enter(&self->info, code, argcount, frame->f_localsplus);
+		return tracer_pyfunc_call(&self->info, code, argcount, frame->f_localsplus);
 	}
 	else {
-		return tracer_pyfunc_enter(&self->info, code, 0, NULL);
+		return tracer_pyfunc_call(&self->info, code, 0, NULL);
 	}
 }
 
@@ -111,7 +86,7 @@ static inline int _tracefunc_excinfo(PassoverObject * self)
 	PyErr_Restore(t, v, tb);
 
 	// excinfo may be null if pack() failed
-	ret = tracer_function_raise(&self->info, excinfo);
+	ret = tracer_raise(&self->info, excinfo);
 	Py_XDECREF(excinfo);
 	return ret;
 }
@@ -157,7 +132,7 @@ static inline int _tracefunc_pyret(PassoverObject * self, PyCodeObject * code, P
 			ERRCODE_TO_PYEXC(_tracefunc_excinfo(self));
 		}
 		else {
-			ERRCODE_TO_PYEXC(tracer_function_raise(&self->info, NULL));
+			ERRCODE_TO_PYEXC(tracer_raise(&self->info, NULL));
 		}
 	}
 	else {
@@ -179,7 +154,7 @@ static inline int _tracefunc_ccall(PassoverObject * self, PyCFunctionObject * fu
 
 	return 0;
 
-	ERRCODE_TO_PYEXC(tracer_cfunc_enter(&self->info, func));
+	ERRCODE_TO_PYEXC(tracer_cfunc_call(&self->info, func));
 	return 0;
 }
 
@@ -207,13 +182,13 @@ static inline int _tracefunc_cexc(PassoverObject * self, PyCFunctionObject * fun
 		ERRCODE_TO_PYEXC(_tracefunc_excinfo(self));
 	}
 	else {
-		ERRCODE_TO_PYEXC(tracer_function_raise(&self->info, NULL));
+		ERRCODE_TO_PYEXC(tracer_raise(&self->info, NULL));
 	}
 
 	return 0;
 }
 
-static int _tracefunc(PassoverObject * self, PyFrameObject * frame,
+int _tracefunc(PassoverObject * self, PyFrameObject * frame,
         int event, PyObject * arg)
 {
 	if (getpid() != self->pid) {
@@ -267,158 +242,6 @@ static int _tracefunc(PassoverObject * self, PyFrameObject * frame,
 	}
 }
 
-/***************************************************************************
-**                           Passover methods
-***************************************************************************/
-
-static PyObject * passover_new(PyTypeObject *type, PyObject * args, PyObject * kw)
-{
-	static char * kwlist[] = {"filename_prefix", "codepoints_filename", NULL};
-	char * filename_prefix = NULL;
-	char * codepoints_filename = NULL;
-	PassoverObject * self = NULL;
-
-	if (!PyArg_ParseTupleAndKeywords(args, kw, "ss:Passover", kwlist,
-	        &tracetree_filename, codepoints_filename)) {
-		return NULL;
-	}
-
-	self = (PassoverObject*)type->tp_alloc(type, 0);
-	if (self == NULL) {
-		return NULL;
-	}
-
-	self->active = 0;
-	self->pid = getpid();
-	self->depth = 0;
-	self->ignore_depth = 0;
-	self->used = 0;
-
-	errcode_t retcode = tracer_init(&self->info, tracetree_filename, codepoints_filename);
-
-	if (IS_ERROR(retcode)) {
-		Py_DECREF(self);
-		PyErr_SetString(ErrorObject, errcode_get_name(retcode));
-		return NULL;
-	}
-
-	return (PyObject *)self;
-}
-
-PyDoc_STRVAR(passover_doc, "\
-Passover(filename_prefix, codepoints_filename)\n\
-\n\
-\n\
-\n\
-\n\
-\n\
-\n\
-\n\
-");
-
-static inline int _passover_clear(PassoverObject * self)
-{
-	if (self->active) {
-		self->active = 0;
-		PyEval_SetProfile(NULL, NULL);
-	}
-	return tracer_fini(&self->info);
-}
-
-static void passover_dealloc(PassoverObject * self)
-{
-	(void)(_passover_clear(self));
-	self->ob_type->tp_free((PyObject*)self);
-}
-
-static PyObject * passover_start(PassoverObject * self, PyObject * noarg)
-{
-	if (self->used) {
-		PyErr_SetString(ErrorObject, "tracer object already exhausted");
-		return NULL;
-	}
-	self->used = 1;
-	PyEval_SetProfile((Py_tracefunc)_tracefunc, (PyObject*)self);
-	self->active = 1;
-	Py_RETURN_NONE;
-}
-
-PyDoc_STRVAR(passover_start_doc, "\
-start()\n\
-    starts the tracer (can be called only once)\n");
-
-static PyObject * passover_stop(PassoverObject * self, PyObject * noarg)
-{
-	if (_passover_clear(self) != 0) {
-		//if (PyErr_Occurred() == NULL) {
-		PyErr_SetString(ErrorObject, reporting_get_message());
-		//}
-		return NULL;
-	}
-	else {
-		Py_RETURN_NONE;
-	}
-}
-
-PyDoc_STRVAR(passover_stop_doc, "\
-stop()\n\
-    stops and finalizes the tracer; you cannot restart a stopped tracer object\n");
-
-static PyMethodDef passover_methods[] = {
-	{"start",	(PyCFunction)passover_start,
-			METH_NOARGS | CO_PASSOVER_IGNORED_SINGLE, passover_start_doc},
-	{"stop",	(PyCFunction)passover_stop,
-			METH_NOARGS | CO_PASSOVER_IGNORED_SINGLE, passover_stop_doc},
-	{NULL, NULL}
-};
-
-
-/***************************************************************************
-**                           the Passover type
-***************************************************************************/
-
-static PyTypeObject Passover_Type = {
-	PyObject_HEAD_INIT(NULL)
-	0,                                      /* ob_size */
-	"_passover.Passover" ,                  /* tp_name */
-	sizeof(PassoverObject),                 /* tp_basicsize */
-	0,                                      /* tp_itemsize */
-	(destructor)passover_dealloc,           /* tp_dealloc */
-	0,                                      /* tp_print */
-	0,                                      /* tp_getattr */
-	0,                                      /* tp_setattr */
-	0,                                      /* tp_compare */
-	0,                                      /* tp_repr */
-	0,                                      /* tp_as_number */
-	0,                                      /* tp_as_sequence */
-	0,                                      /* tp_as_mapping */
-	0,                                      /* tp_hash */
-	0,                                      /* tp_call */
-	0,                                      /* tp_str */
-	0,                                      /* tp_getattro */
-	0,                                      /* tp_setattro */
-	0,                                      /* tp_as_buffer */
-	Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /* tp_flags */
-	passover_doc,                           /* tp_doc */
-	0,                                      /* tp_traverse */
-	0,                                      /* tp_clear */
-	0,                                      /* tp_richcompare */
-	0,                                      /* tp_weaklistoffset */
-	0,                                      /* tp_iter */
-	0,                                      /* tp_iternext */
-	passover_methods,                       /* tp_methods */
-	0,                                      /* tp_members */
-	0,                                      /* tp_getset */
-	0,                                      /* tp_base */
-	0,                                      /* tp_dict */
-	0,                                      /* tp_descr_get */
-	0,                                      /* tp_descr_set */
-	0,                                      /* tp_dictoffset */
-	0,                                      /* tp_init */
-	PyType_GenericAlloc,                    /* tp_alloc */
-	passover_new,                           /* tp_new */
-	PyObject_Del,                           /* tp_free */
-};
 
 /***************************************************************************
 **                           module functions
@@ -529,6 +352,10 @@ PyMODINIT_FUNC init_passover(void)
 		return;
 	}
 	PyModule_AddObject(module, "Passover", (PyObject*) &Passover_Type);
+	if (PyType_Ready(&Rotdir_Type) < 0) {
+		return;
+	}
+	PyModule_AddObject(module, "Rotdir", (PyObject*) &Rotdir_Type);
 
 	Py_XDECREF(_passover_logfunc);
 	_passover_logfunc = NULL;

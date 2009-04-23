@@ -11,7 +11,7 @@
 
 errcode_t rotdir_init(rotdir_t * self, const char * path, int max_files)
 {
-	errcode_t retcode = ERR_UNKNWON;
+	errcode_t retcode = ERR_UNKNOWN;
 
 	if (strlen(path) > sizeof(self->path) - (ROTDIR_MAX_FILENAME_LEN + 2)) {
 		retcode = ERR_ROTDIR_PATH_TOO_LONG;
@@ -94,7 +94,7 @@ errcode_t rotdir_allocate(rotdir_t * self, const char * prefix, OUT int * outslo
 		OUT char * outfilename)
 {
 	int slot;
-	errcode_t retcode = ERR_UNKNWON;
+	errcode_t retcode = ERR_UNKNOWN;
 
 	if (strlen(prefix) > ROTDIR_MAX_FILEPREFIX_LEN) {
 		return ERR_ROTDIR_PREFIX_TOO_LONG;
