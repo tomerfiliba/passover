@@ -5,7 +5,7 @@
 #include <stdio.h>
 
 typedef enum {
-	ERR_UNKNWON = -1,
+	ERR_UNKNOWN = -1,
 	ERR_SUCCESS = 0,
 	#define ERROR_DEF(err) err,
 	#include "errors.xh"

@@ -56,11 +56,11 @@ void htable_print_stats(htable_t * self);
 
 errcode_t htable_fini(htable_t * self)
 {
-	#ifdef HTABLE_COLLECT_STATS
-	htable_print_stats(self);
-	#endif
-
 	if (self->heads != NULL) {
+		#ifdef HTABLE_COLLECT_STATS
+		htable_print_stats(self);
+		#endif
+
 		free(self->heads);
 		self->heads = NULL;
 	}

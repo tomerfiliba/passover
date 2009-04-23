@@ -2,11 +2,8 @@
 #include <stdint.h>
 
 #include "../lib/hptime.h"
-#include "../lib/rotdir.h"
 #include "tracer.h"
 
-
-#pragma pack(1)
 
 #define TRACER_RECORD_PY_ENTER
 #define TRACER_RECORD_PY_LEAVE
@@ -15,6 +12,9 @@
 #define TRACER_RECORD_C_LEAVE
 #define TRACER_RECORD_C_EXC
 #define TRACER_RECORD_LOG
+
+
+#pragma pack(1)
 
 typedef struct {
 	char     type;                   // TRACER_RECORD_LOG
@@ -29,8 +29,8 @@ typedef struct {
 	// payload follows
 } _tracer_pyfunc_rec_t;
 
-
 #pragma pack()
+
 
 errcode_t tracer_init(tracer_t * self, rotdir_t * dir, const char * prefix, const char * codepoints_filename)
 {
@@ -39,12 +39,12 @@ errcode_t tracer_init(tracer_t * self, rotdir_t * dir, const char * prefix, cons
 
 	PROPAGATE_TO(error1, retcode = listfile_open(&self->codepoints, codepoints_filename));
 	PROPAGATE_TO(error2, retcode = htable_init(&self->table, 65535));
-	PROPAGATE_TO(error3, retcode = rotrec_init(&self->records, prefix, 2 * MB, 100 * MB));
+	PROPAGATE_TO(error3, retcode = rotrec_init(&self->records, dir, prefix, 2 * MB, 100 * MB));
 
 	RETURN_SUCCESSFUL;
 
 error3:
-	htable_close(&self->table);
+	htable_fini(&self->table);
 error2:
 	listfile_close(&self->codepoints);
 error1:
@@ -61,34 +61,37 @@ errcode_t tracer_fini(tracer_t * self)
 
 errcode_t tracer_log(tracer_t * self, PyObject * fmtstr, PyObject * args)
 {
+	printf("LOG\n");
 	RETURN_SUCCESSFUL;
 }
 
 errcode_t tracer_pyfunc_call(tracer_t * self, PyCodeObject * code, int argcount, PyObject * args[])
 {
+	printf("PYCALL\n");
 	RETURN_SUCCESSFUL;
 }
 
 errcode_t tracer_pyfunc_return(tracer_t * self, PyObject * retval)
 {
+	printf("PYRET\n");
 	RETURN_SUCCESSFUL;
 }
 
 errcode_t tracer_cfunc_call(tracer_t * self, PyCFunctionObject * func)
 {
+	printf("CCALL\n");
 	RETURN_SUCCESSFUL;
 }
 
 errcode_t tracer_cfunc_return(tracer_t * self)
 {
+	printf("CRET\n");
 	RETURN_SUCCESSFUL;
 }
 
-int tracer_raise(tracer_t * self, PyObject * excinfo)
+errcode_t tracer_raise(tracer_t * self, PyObject * excinfo)
 {
+	printf("EXC\n");
 	RETURN_SUCCESSFUL;
 }
-
-
-
 
