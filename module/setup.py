@@ -3,11 +3,9 @@ from distutils.core import setup, Extension
 
 setup(
     name = "passover",
-    version = "0.1",
+    version = "1.0",
     description = "high performane python tracer",
     py_modules = [
-        'passover',
-        'test1',
     ],
     ext_modules = [
         Extension("_passover",
@@ -19,6 +17,7 @@ setup(
                 "lib/listfile.c",
                 "lib/rotdir.c",
                 "lib/rotrec.c",
+                "lib/swriter.c",
                 "tracer/tracer.c",
                 "tracer/rotdir_object.c",
                 "tracer/passover_object.c",
@@ -28,14 +27,15 @@ setup(
                 ("FMAP_BACKGROUND_MUNMAP", None),
                 ("HTABLE_COLLECT_STATS", None),
                 ("HTABLE_BOOST_GETS", None),
+                ("TRACER_DUMP_ABSPATH", None),
             ],
             extra_compile_args = ["-Werror"], #, "-g", "-O0"],
         ),
     ],
-    platforms = ["posix"],
+    platforms = ["linux"],
     author = "tomer filiba",
     author_email = "tomerfiliba@gmail.com",
-    url = "http://sebulbasvn.googlecode.com/svn/trunk/prace",
+    url = "git://gitserver.xiv/python/passover",
     long_description = "high performane python tracer",
 )
 

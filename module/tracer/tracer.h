@@ -20,7 +20,7 @@ typedef struct {
 errcode_t tracer_init(tracer_t * self, rotdir_t * dir, const char * prefix,
 		const char * codepoints_filename);
 errcode_t tracer_fini(tracer_t * self);
-errcode_t tracer_log(tracer_t * self, PyObject * fmtstr, PyObject * args);
+errcode_t tracer_log(tracer_t * self, PyObject * fmtstr, PyObject * argstuple);
 errcode_t tracer_pyfunc_call(tracer_t * self, PyCodeObject * code, int argcount, PyObject * args[]);
 errcode_t tracer_pyfunc_return(tracer_t * self, PyObject * retval);
 errcode_t tracer_cfunc_call(tracer_t * self, PyCFunctionObject * func);

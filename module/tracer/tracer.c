@@ -37,31 +37,37 @@ errcode_t tracer_init(tracer_t * self, rotdir_t * dir, const char * prefix, cons
 	static const int MB = 1024 * 1024;
 	errcode_t retcode = ERR_UNKNOWN;
 
-	PROPAGATE_TO(error1, retcode = listfile_open(&self->codepoints, codepoints_filename));
-	PROPAGATE_TO(error2, retcode = htable_init(&self->table, 65535));
+	PROPAGATE_TO(error1, retcode = htable_init(&self->table, 65535));
+	PROPAGATE_TO(error2, retcode = listfile_open(&self->codepoints, codepoints_filename));
 	PROPAGATE_TO(error3, retcode = rotrec_init(&self->records, dir, prefix, 2 * MB, 100 * MB));
 
 	RETURN_SUCCESSFUL;
 
 error3:
-	htable_fini(&self->table);
-error2:
 	listfile_close(&self->codepoints);
+error2:
+	htable_fini(&self->table);
 error1:
 	return retcode;
 }
 
 errcode_t tracer_fini(tracer_t * self)
 {
+	PROPAGATE(rotrec_fini(&self->records));
 	PROPAGATE(listfile_fini(&self->codepoints));
 	PROPAGATE(htable_fini(&self->table));
-	PROPAGATE(rotrec_fini(&self->records));
 	RETURN_SUCCESSFUL;
 }
 
-errcode_t tracer_log(tracer_t * self, PyObject * fmtstr, PyObject * args)
+typedef struct {
+	usec_t timestamp;
+} logline_t;
+
+errcode_t tracer_log(tracer_t * self, PyObject * fmtstr, PyObject * argstuple)
 {
-	printf("LOG\n");
+	logline_t info;
+	info.timestamp = hptime_get_time();
+	//printf("LOG\n");
 	RETURN_SUCCESSFUL;
 }
 
@@ -79,19 +85,19 @@ errcode_t tracer_pyfunc_return(tracer_t * self, PyObject * retval)
 
 errcode_t tracer_cfunc_call(tracer_t * self, PyCFunctionObject * func)
 {
-	printf("CCALL\n");
+	//printf("CCALL\n");
 	RETURN_SUCCESSFUL;
 }
 
 errcode_t tracer_cfunc_return(tracer_t * self)
 {
-	printf("CRET\n");
+	//printf("CRET\n");
 	RETURN_SUCCESSFUL;
 }
 
 errcode_t tracer_raise(tracer_t * self, PyObject * excinfo)
 {
-	printf("EXC\n");
+	//printf("EXC\n");
 	RETURN_SUCCESSFUL;
 }
 

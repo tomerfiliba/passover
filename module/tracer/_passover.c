@@ -5,6 +5,7 @@
 #include <unistd.h>
 
 #include "../lib/errors.h"
+#include "../lib/hptime.h"
 #include "rotdir_object.h"
 #include "passover_object.h"
 
@@ -13,25 +14,6 @@ PyObject * ErrorObject = NULL;
 static PyFunctionObject * _passover_logfunc = NULL;
 static PyCodeObject * _passover_logfunc_code = NULL;
 
-
-static inline int _tracefunc_pycall_function(PassoverObject * self, PyFrameObject * frame)
-{
-	PyCodeObject * code = frame->f_code;
-	int argcount = code->co_argcount;
-
-	if (code->co_flags & CO_PASSOVER_DETAILED) {
-		if (code->co_flags & CO_VARARGS) {
-			argcount += 1;
-		}
-		if (code->co_flags & CO_VARKEYWORDS) {
-			argcount += 1;
-		}
-		return tracer_pyfunc_call(&self->info, code, argcount, frame->f_localsplus);
-	}
-	else {
-		return tracer_pyfunc_call(&self->info, code, 0, NULL);
-	}
-}
 
 static inline int _tracefunc_is_call_ignored(PassoverObject * self, int flags)
 {
@@ -89,6 +71,25 @@ static inline int _tracefunc_excinfo(PassoverObject * self)
 	ret = tracer_raise(&self->info, excinfo);
 	Py_XDECREF(excinfo);
 	return ret;
+}
+
+static inline int _tracefunc_pycall_function(PassoverObject * self, PyFrameObject * frame)
+{
+	PyCodeObject * code = frame->f_code;
+	int argcount = code->co_argcount;
+
+	if (code->co_flags & CO_PASSOVER_DETAILED) {
+		if (code->co_flags & CO_VARARGS) {
+			argcount += 1;
+		}
+		if (code->co_flags & CO_VARKEYWORDS) {
+			argcount += 1;
+		}
+		return tracer_pyfunc_call(&self->info, code, argcount, frame->f_localsplus);
+	}
+	else {
+		return tracer_pyfunc_call(&self->info, code, 0, NULL);
+	}
 }
 
 static inline int _tracefunc_pycall(PassoverObject * self, PyFrameObject * frame)
@@ -152,8 +153,6 @@ static inline int _tracefunc_ccall(PassoverObject * self, PyCFunctionObject * fu
 		return 0;
 	}
 
-	return 0;
-
 	ERRCODE_TO_PYEXC(tracer_cfunc_call(&self->info, func));
 	return 0;
 }
@@ -163,8 +162,6 @@ static inline int _tracefunc_cret(PassoverObject * self, PyCFunctionObject * fun
 	if (_tracefunc_is_ret_ignored(self, func->m_ml->ml_flags)) {
 		return 0;
 	}
-
-	return 0;
 
 	ERRCODE_TO_PYEXC(tracer_cfunc_return(&self->info));
 	return 0;
@@ -342,6 +339,12 @@ PyMODINIT_FUNC init_passover(void)
 	}
 	Py_INCREF(ErrorObject);
 	PyModule_AddObject(module, "error", ErrorObject);
+
+	errcode_t retcode = hptime_init();
+	if (IS_ERROR(retcode)) {
+		PyErr_SetString(ErrorObject, errcode_get_name(retcode));
+		return;
+	}
 
 	PyModule_AddIntConstant(module, "CO_PASSOVER_IGNORED_SINGLE", CO_PASSOVER_IGNORED_SINGLE);
 	PyModule_AddIntConstant(module, "CO_PASSOVER_IGNORED_CHILDREN", CO_PASSOVER_IGNORED_CHILDREN);
