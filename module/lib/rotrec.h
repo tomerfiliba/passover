@@ -22,16 +22,12 @@ typedef struct {
 } rotrec_t;
 
 
-#define ROTREC_RECORD_8    uint8_t
-#define ROTREC_RECORD_16   uint16_t
-#define ROTREC_RECORD_32   uint32_t
-#define ROTREC_RECORD_64   uint64_t
-#define ROTREC_RECORD_SIZE ROTREC_RECORD_16
+typedef rotret_record_size_t uint16_t;
 
 int rotrec_init(rotrec_t * self, rotdir_t * rotdir, const char * file_prefix,
 		size_t map_size, off_t file_size);
 int rotrec_fini(rotrec_t * self);
-int rotrec_write(rotrec_t * self, const void * buf, ROTREC_RECORD_SIZE size);
+int rotrec_write(rotrec_t * self, const void * buf, rotret_record_size_t size);
 
 
 #endif /* ROTREC_H_INCLUDED */

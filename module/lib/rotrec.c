@@ -98,7 +98,7 @@ errcode_t rotrec_fini(rotrec_t * self)
 	RETURN_SUCCESSFUL;
 }
 
-errcode_t rotrec_write(rotrec_t * self, const void * buf, ROTREC_RECORD_SIZE size)
+errcode_t rotrec_write(rotrec_t * self, const void * buf, rotret_record_size_t size)
 {
 	if (size > self->file_size) {
 		return ERR_ROTREC_SIZE_TOO_LARGE;

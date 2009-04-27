@@ -47,49 +47,19 @@ static inline int _tracefunc_is_ret_ignored(PassoverObject * self, int flags)
 	return 0;
 }
 
-static inline int _tracefunc_excinfo(PassoverObject * self)
-{
-	int ret;
-	PyObject *t, *v, *tb;
-	PyObject * excinfo = NULL;
-
-	PyErr_Fetch(&t, &v, &tb);
-	if (t == NULL) {
-		PyErr_SetString(ErrorObject, "internal error! tracefunc_exception "
-				"called with no pending exception");
-		return -1;
-	}
-	PyErr_NormalizeException(&t, &v, &tb);
-	Py_INCREF(t); Py_INCREF(v); Py_INCREF(tb);
-	excinfo = PyTuple_Pack(3, t, v, tb);
-	if (excinfo == NULL) {
-		Py_DECREF(t); Py_DECREF(v); Py_DECREF(tb);
-	}
-	PyErr_Restore(t, v, tb);
-
-	// excinfo may be null if pack() failed
-	ret = tracer_raise(&self->info, excinfo);
-	Py_XDECREF(excinfo);
-	return ret;
-}
-
-static inline int _tracefunc_pycall_function(PassoverObject * self, PyFrameObject * frame)
+static inline errcode_t _tracefunc_pycall_function(PassoverObject * self, PyFrameObject * frame)
 {
 	PyCodeObject * code = frame->f_code;
 	int argcount = code->co_argcount;
 
-	if (code->co_flags & CO_PASSOVER_DETAILED) {
-		if (code->co_flags & CO_VARARGS) {
-			argcount += 1;
-		}
-		if (code->co_flags & CO_VARKEYWORDS) {
-			argcount += 1;
-		}
-		return tracer_pyfunc_call(&self->info, code, argcount, frame->f_localsplus);
+	if (code->co_flags & CO_VARARGS) {
+		argcount += 1;
 	}
-	else {
-		return tracer_pyfunc_call(&self->info, code, 0, NULL);
+	if (code->co_flags & CO_VARKEYWORDS) {
+		argcount += 1;
 	}
+	return tracer_pyfunc_call(&self->info, code, argcount, frame->f_localsplus);
+	//if (code->co_flags & CO_PASSOVER_DETAILED) {
 }
 
 static inline int _tracefunc_pycall(PassoverObject * self, PyFrameObject * frame)
@@ -116,6 +86,17 @@ static inline int _tracefunc_pycall(PassoverObject * self, PyFrameObject * frame
 	return 0;
 }
 
+static inline errcode_t _tracefunc_get_python_exception(PyObject * t, PyObject * v, PyObject * tb)
+{
+	PyErr_Fetch(&t, &v, &tb);
+	if (t == NULL) {
+		return ERR_PASSOVER_NO_EXCEPTION_PENDING;
+	}
+	PyErr_NormalizeException(&t, &v, &tb);
+	PyErr_Restore(t, v, tb);
+	RETURN_SUCCESSFUL;
+}
+
 static inline int _tracefunc_pyret(PassoverObject * self, PyCodeObject * code, PyObject * arg)
 {
 	if (_tracefunc_is_ret_ignored(self, code->co_flags)) {
@@ -129,20 +110,14 @@ static inline int _tracefunc_pyret(PassoverObject * self, PyCodeObject * code, P
 
 	// XXX: change to PyErr_Occurred() != NULL ??
 	if (arg == NULL) {
-		if (code->co_flags & CO_PASSOVER_DETAILED) {
-			ERRCODE_TO_PYEXC(_tracefunc_excinfo(self));
-		}
-		else {
-			ERRCODE_TO_PYEXC(tracer_raise(&self->info, NULL));
-		}
+		PyObject *t, *v, *tb;
+		ERRCODE_TO_PYEXC(_tracefunc_get_python_exception(&t, &v, &tb));
+		ERRCODE_TO_PYEXC(tracer_pyfunc_raise(&self->info, code, t, v, tb));
+		//if (code->co_flags & CO_PASSOVER_DETAILED) {
 	}
 	else {
-		if (code->co_flags & CO_PASSOVER_DETAILED) {
-			ERRCODE_TO_PYEXC(tracer_pyfunc_return(&self->info, arg));
-		}
-		else {
-			ERRCODE_TO_PYEXC(tracer_pyfunc_return(&self->info, NULL));
-		}
+		ERRCODE_TO_PYEXC(tracer_pyfunc_return(&self->info, code, arg));
+		//if (code->co_flags & CO_PASSOVER_DETAILED) {
 	}
 	return 0;
 }
@@ -163,26 +138,20 @@ static inline int _tracefunc_cret(PassoverObject * self, PyCFunctionObject * fun
 		return 0;
 	}
 
-	ERRCODE_TO_PYEXC(tracer_cfunc_return(&self->info));
+	ERRCODE_TO_PYEXC(tracer_cfunc_return(&self->info, func));
 	return 0;
 }
 
 static inline int _tracefunc_cexc(PassoverObject * self, PyCFunctionObject * func)
 {
+	PyObject *t, *v, *tb;
 	if (_tracefunc_is_ret_ignored(self, func->m_ml->ml_flags)) {
 		return 0;
 	}
 
-	return 0;
-
-	if (func->m_ml->ml_flags & CO_PASSOVER_DETAILED) {
-		ERRCODE_TO_PYEXC(_tracefunc_excinfo(self));
-	}
-	else {
-		ERRCODE_TO_PYEXC(tracer_raise(&self->info, NULL));
-	}
-
-	return 0;
+	ERRCODE_TO_PYEXC(_tracefunc_get_python_exception(&t, &v, &tb));
+	return tracer_cfunc_raise(&self->info, code, t, v, tb);
+	//if (func->m_ml->ml_flags & CO_PASSOVER_DETAILED) {
 }
 
 int _tracefunc(PassoverObject * self, PyFrameObject * frame,

@@ -7,6 +7,7 @@ def f(a, b, c):
     return a + b * c
 
 def g():
+    passover.log("hello there")
     1/0
 
 with passover.traced("/tmp/passover"):

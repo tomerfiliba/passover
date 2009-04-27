@@ -7,18 +7,28 @@
 #include "../lib/listfile.h"
 #include "../lib/rotdir.h"
 #include "../lib/rotrec.h"
+#include "../lib/swriter.h"
+
+#define TRACER_RECORD_INVALID 0
+#define TRACER_RECORD_PYCALL  1
+#define TRACER_RECORD_PYRET   2
+#define TRACER_RECORD_CCALL   3
+#define TRACER_RECORD_CRET    4
+#define TRACER_RECORD_RAISE   5
+#define TRACER_RECORD_LOG     6
 
 
 typedef struct {
 	int        depth;
 	rotrec_t   records;
+	swriter_t  stream;
 	listfile_t codepoints;
 	htable_t   table;
 } tracer_t;
 
 
 errcode_t tracer_init(tracer_t * self, rotdir_t * dir, const char * prefix,
-		const char * codepoints_filename);
+		const char * codepoints_filename, size_t map_size, size_t file_size);
 errcode_t tracer_fini(tracer_t * self);
 errcode_t tracer_log(tracer_t * self, PyObject * fmtstr, PyObject * argstuple);
 errcode_t tracer_pyfunc_call(tracer_t * self, PyCodeObject * code, int argcount, PyObject * args[]);

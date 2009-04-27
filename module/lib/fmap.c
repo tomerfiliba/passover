@@ -1,3 +1,20 @@
+/*
+ * FMap (file map) -- maps a portion of a file into memory, returning a
+ * pointer to it. it is basically a wrapper around mmap(), that takes care of
+ * rounding to page size, ensuring file capacity, etc. using fmap is much more
+ * efficient than using write() and read() -- it does not require system calls
+ * until the map is moved, and is crash consistent, because the kernel will
+ * write the pages to disk when the process dies (no intermidiate buffering).
+ * the fmap will not actually remap unless the requested address is out of
+ * the range of the current map. this means that for most of the time, there
+ * are no system calls.
+ * Also, you can create more than a one fmap per file, mapping different parts
+ * of it. This way you don't need to fseek() and flush the file buffers every
+ * time.
+ *
+ * FWindow (file window) -- a sliding window over fmap. it advances the
+ * window's position every time you write to it, like a stream.
+ */
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <unistd.h>
@@ -11,6 +28,19 @@
 static long _fmap_page_size = 0;
 
 
+/*
+ * fd - an open file descriptor, with the right mode (reading/writing/etc)
+ * flags - a combination of FMAP_{READ|WRITE|LOCK|NOSWAP|READ_AHEAD}
+ * map_size - the total size of the mapped portion (usually ~5MB)
+ * map_ahead_size - a hint used to determine where to start the maping,
+ * relative to the user's desired offset:
+ *
+ *       (the offset the user requested)
+ *               |
+ * ..............X...........................................
+ *     |-------------- total map size ---------------|
+ *                |--------- map_ahead_size ---------|
+ */
 errcode_t fmap_init(fmap_t * self, int fd, int flags, size_t map_size, size_t map_ahead_size)
 {
 	if (_fmap_page_size == 0) {

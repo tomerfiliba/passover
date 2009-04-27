@@ -12,14 +12,18 @@ int _tracefunc(PassoverObject * self, PyFrameObject * frame,
 
 static PyObject * passover_new(PyTypeObject *type, PyObject * args, PyObject * kw)
 {
-	static char * kwlist[] = {"rotdir", "filename_prefix", "codepoints_filename", NULL};
+	static char * kwlist[] = {"rotdir", "filename_prefix", "codepoints_filename",
+			"map_size", "file_size", NULL};
 	PyObject * rotdirobj = NULL;
 	char * filename_prefix = NULL;
 	char * codepoints_filename = NULL;
+	size_t map_size;
+	size_t file_size;
 	PassoverObject * self = NULL;
 
-	if (!PyArg_ParseTupleAndKeywords(args, kw, "O!ss:Passover", kwlist,
-	        &Rotdir_Type, &rotdirobj, &filename_prefix, &codepoints_filename)) {
+	if (!PyArg_ParseTupleAndKeywords(args, kw, "O!ssll:Passover", kwlist,
+	        &Rotdir_Type, &rotdirobj, &filename_prefix, &codepoints_filename,
+	        &map_size, &file_size)) {
 		return NULL;
 	}
 
@@ -35,7 +39,7 @@ static PyObject * passover_new(PyTypeObject *type, PyObject * args, PyObject * k
 	self->used = 0;
 
 	errcode_t retcode = tracer_init(&self->info, &((RotdirObject*)rotdirobj)->rotdir,
-		filename_prefix, codepoints_filename);
+		filename_prefix, codepoints_filename, map_size, file_size);
 
 	if (IS_ERROR(retcode)) {
 		Py_DECREF(self);
