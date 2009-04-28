@@ -106,14 +106,14 @@ static inline errcode_t _tracer_dump_exception(tracer_t * self, PyObject * excty
 
 errcode_t tracer_pyfunc_call(tracer_t * self, PyCodeObject * code, int argcount, PyObject * args[])
 {
-	int i;
-
 	DUMP_HEADER(TRACER_RECORD_PYCALL);
 	PROPAGATE(_tracer_dump_pyfunc(self, code));
 	DUMP_UI16(argcount);
+	/*
+	int i;
 	for (i = 0; i < argcount; i++) {
 		PROPAGATE(_tracer_dump_argument(self, args[i]));
-	}
+	}*/
 
 	self->depth += 1;
 	DUMP_FINALIZE;
@@ -124,7 +124,7 @@ errcode_t tracer_pyfunc_return(tracer_t * self, PyCodeObject * code, PyObject * 
 	self->depth -= 1;
 	DUMP_HEADER(TRACER_RECORD_PYRET);
 	PROPAGATE(_tracer_dump_pyfunc(self, code));
-	PROPAGATE(_tracer_dump_argument(self, retval));
+	//PROPAGATE(_tracer_dump_argument(self, retval));
 	DUMP_FINALIZE;
 }
 
@@ -137,7 +137,7 @@ errcode_t tracer_pyfunc_raise(tracer_t * self, PyCodeObject * code,
 
 	DUMP_HEADER(TRACER_RECORD_PYRAISE);
 	PROPAGATE(_tracer_dump_pyfunc(self, code));
-	PROPAGATE(_tracer_dump_exception(self, exctype));
+	//PROPAGATE(_tracer_dump_exception(self, exctype));
 	DUMP_FINALIZE;
 }
 
@@ -187,7 +187,7 @@ errcode_t tracer_cfunc_raise(tracer_t * self, PyCFunctionObject * func,
 	self->depth -= 1;
 	DUMP_HEADER(TRACER_RECORD_CRAISE);
 	PROPAGATE(_tracer_dump_cfunc(self, func));
-	PROPAGATE(_tracer_dump_exception(self, exctype));
+	//PROPAGATE(_tracer_dump_exception(self, exctype));
 	DUMP_FINALIZE;
 }
 
