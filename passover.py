@@ -99,7 +99,9 @@ _orig_start_new = thread.start_new
 _per_thread = thread._local()
 
 def _thread_wrapper(func, args, kwargs):
-    with _traced():
+    with _traced(_per_thread.rotdir, template = _per_thread.template, 
+            cptemplate = _per_thread.cptemplate, map_size = _per_thread.map_size, 
+            file_size = _per_thread.file_size):
         return func(*args, **kwargs)
 
 def _start_new_thread(func, args, kwargs = {}):
@@ -111,20 +113,22 @@ def _start_new_thread(func, args, kwargs = {}):
 thread.start_new_thread = thread.start_new = _start_new_thread
 
 @contextmanager
-def _traced(rotdir, template, cptemplate, trace_children):
+def _traced(rotdir, template, cptemplate, trace_children, map_size, file_size):
     tid = _thread_counter.next()
     _per_thread.tid = tid
     _per_thread.traced = False
     
     _per_thread.rotdir = rotdir
+    _per_thread.map_size = map_size
+    _per_thread.file_size = file_size
     _per_thread.template = template
     _per_thread.cptemplate = cptemplate
     _per_thread.trace_children = trace_children
     
     prefix = template % (tid,)
-    cpfile = os.path.join(path, cptemplate % (tid,))
+    cpfile = os.path.join(rotdir.path, cptemplate % (tid,))
 
-    po = _passover.Passover(rotdir, prefix, cpfile)
+    po = _passover.Passover(rotdir, prefix, cpfile, map_size, file_size)
     po.start()
     _per_thread.traced = False
     try:
@@ -137,13 +141,14 @@ def _traced(rotdir, template, cptemplate, trace_children):
 #===============================================================================
 # tracing APIs: log and traced()
 #===============================================================================
+MB = 1024 * 1024
 
 log = _passover.log
 
 @contextmanager
 def traced(path, max_files = 100, delete_path_if_exists = True, 
         template = "thread-%d", cptemplate = "codepoints-%d",
-        trace_threads = True):
+        trace_threads = True, map_size = 2 * MB, file_size = 100 * MB):
     path = os.path.abspath(path)
     if path not in _rotdirs:
         if os.path.exists(path):
@@ -153,14 +158,16 @@ def traced(path, max_files = 100, delete_path_if_exists = True,
                 raise TracerPathError("path already exists")
             shutil.rmtree(path)
         os.makedirs(path)
-        _rotdirs[path] = (max_files, _passover.Rotdir(path, max_files))
+        _rotdirs[path] = _passover.Rotdir(path, max_files)
     
-    existing_max_files, rotdir = _rotdirs[path]
-    if max_files != existing_max_files:
+    rotdir = _rotdirs[path]
+    if max_files != rotdir.max_files:
         raise RotdirMaxFilesMismatch("rotdir already exists with a different "
             "number of max_files")
     
-    with traced(rotdir, template, cptemplate, trace_threads) as po:
+    with _traced(rotdir, template = template, cptemplate = cptemplate, 
+            trace_children = trace_threads, map_size = map_size, 
+            file_size = file_size) as po:
         yield po
 
 

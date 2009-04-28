@@ -10,7 +10,6 @@
 errcode_t tracer_init(tracer_t * self, rotdir_t * dir, const char * prefix,
 		const char * codepoints_filename, size_t map_size, size_t file_size)
 {
-	static const int MB = 1024 * 1024;
 	errcode_t retcode = ERR_UNKNOWN;
 
 	self->depth = 0;
@@ -48,19 +47,19 @@ errcode_t tracer_fini(tracer_t * self)
 	PROPAGATE(swriter_dump_uint64(&self->stream, hptime_get_time()))
 
 #define DUMP_UI16(num) \
-	PROPAGATE(swriter_dump_uint16(stream, num))
+	PROPAGATE(swriter_dump_uint16(&self->stream, num))
 
 #define DUMP_UI32(num) \
-	PROPAGATE(swriter_dump_uint32(stream, num))
+	PROPAGATE(swriter_dump_uint32(&self->stream, num))
 
 #define DUMP_CSTR(str) \
-	PROPAGATE(swriter_dump_cstr(stream, str))
+	PROPAGATE(swriter_dump_cstr(&self->stream, str))
 
 #define DUMP_PYSTR(obj) \
-	PROPAGATE(swriter_dump_pstr(stream, PyString_AS_STRING(obj), PyString_GET_SIZE(obj)))
+	PROPAGATE(swriter_dump_pstr(&self->stream, PyString_AS_STRING(obj), PyString_GET_SIZE(obj)))
 
 #define DUMP_FINALIZE \
-	return rotret_write(&self->records, swriter_get_buffer(&self->stream), \
+	return rotrec_write(&self->records, swriter_get_buffer(&self->stream), \
 				swriter_get_length(&self->stream))
 
 errcode_t tracer_log(tracer_t * self, PyObject * fmtstr, PyObject * argstuple)
@@ -70,43 +69,48 @@ errcode_t tracer_log(tracer_t * self, PyObject * fmtstr, PyObject * argstuple)
 	DUMP_FINALIZE;
 }
 
-/*errcode_t _tracer_codepoint()
-{
-#ifdef TRACER_DUMP_ABSPATH
-	char * realpath = canonicalize_file_name(PyString_AS_STRING(codeobj->co_filename));
-	if (realpath == NULL) {
-		DUMP_PYSTR(sw, codeobj->co_filename);
-	}
-	else {
-		DUMP_CSTR(sw, realpath);
-		free(realpath);
-	}
-#else
-	DUMP_PYSTR(sw, codeobj->co_filename);
-#endif
-}*/
-
 static inline errcode_t _tracer_dump_argument(tracer_t * self, PyObject * obj)
 {
-	PyObject * repred = PyObject_Repr(retval);
+	PyObject * repred = PyObject_Repr(obj);
 	if (repred == NULL) {
 		return ERR_TRACER_REPR_OF_ARGUMENT_FAILED;
 	}
-	DUMP_PYSTR(repred);
+	DUMP_PYSTR(repred); // ref leak!!
 	Py_DECREF(repred);
 	RETURN_SUCCESSFUL;
+}
+
+static inline errcode_t _tracer_dump_pyfunc(tracer_t * self, PyCodeObject * code)
+{
+#ifdef TRACER_DUMP_ABSPATH
+	char * realpath = canonicalize_file_name(PyString_AS_STRING(code->co_filename));
+	if (realpath == NULL) {
+		DUMP_PYSTR(code->co_filename);
+	}
+	else {
+		DUMP_CSTR(realpath);
+		free(realpath);
+	}
+#else
+	DUMP_PYSTR(code->co_filename);
+#endif
+	DUMP_PYSTR(code->co_name);
+	DUMP_UI32(code->co_firstlineno);
+	RETURN_SUCCESSFUL;
+}
+
+static inline errcode_t _tracer_dump_exception(tracer_t * self, PyObject * exctype)
+{
+	return _tracer_dump_argument(self, exctype);
 }
 
 errcode_t tracer_pyfunc_call(tracer_t * self, PyCodeObject * code, int argcount, PyObject * args[])
 {
 	int i;
-	PyObject * repred = NULL;
 
 	DUMP_HEADER(TRACER_RECORD_PYCALL);
-	DUMP_PYSTR(code->co_filename);
-	DUMP_PYSTR(code->co_name);
-	DUMP_UI32(code->co_firstlineno);
-	DUMP_UI32(argcount);
+	PROPAGATE(_tracer_dump_pyfunc(self, code));
+	DUMP_UI16(argcount);
 	for (i = 0; i < argcount; i++) {
 		PROPAGATE(_tracer_dump_argument(self, args[i]));
 	}
@@ -119,16 +123,21 @@ errcode_t tracer_pyfunc_return(tracer_t * self, PyCodeObject * code, PyObject * 
 {
 	self->depth -= 1;
 	DUMP_HEADER(TRACER_RECORD_PYRET);
-	DUMP_PYSTR(code->co_filename);
-	DUMP_PYSTR(code->co_name);
-	DUMP_UI32(code->co_firstlineno);
-	PROPAGATE(_tracer_dump_argument(self, retval);
+	PROPAGATE(_tracer_dump_pyfunc(self, code));
+	PROPAGATE(_tracer_dump_argument(self, retval));
 	DUMP_FINALIZE;
 }
 
-errcode_t tracer_pyfunc_raise(tracer_t * self, PyCodeObject * code, PyObject * excinfo)
+errcode_t tracer_pyfunc_raise(tracer_t * self, PyCodeObject * code,
+		PyObject * exctype)
 {
+	if (exctype == NULL) {
+		return ERR_TRACER_NO_EXCEPTION_SET;
+	}
+
 	DUMP_HEADER(TRACER_RECORD_PYRAISE);
+	PROPAGATE(_tracer_dump_pyfunc(self, code));
+	PROPAGATE(_tracer_dump_exception(self, exctype));
 	DUMP_FINALIZE;
 }
 
@@ -165,15 +174,20 @@ errcode_t tracer_cfunc_return(tracer_t * self, PyCFunctionObject * func)
 {
 	self->depth -= 1;
 	DUMP_HEADER(TRACER_RECORD_CRET);
+	PROPAGATE(_tracer_dump_cfunc(self, func));
 	DUMP_FINALIZE;
 }
 
-errcode_t tracer_cfunc_raise(tracer_t * self, PyObject * excinfo)
+errcode_t tracer_cfunc_raise(tracer_t * self, PyCFunctionObject * func,
+		PyObject * exctype)
 {
-	PyObject *
+	if (exctype == NULL) {
+		return ERR_TRACER_NO_EXCEPTION_SET;
+	}
 	self->depth -= 1;
-	DUMP_HEADER(TRACER_RECORD_RAISE);
-	PyTuple_GET_ITEM(excinfo, 0)
+	DUMP_HEADER(TRACER_RECORD_CRAISE);
+	PROPAGATE(_tracer_dump_cfunc(self, func));
+	PROPAGATE(_tracer_dump_exception(self, exctype));
 	DUMP_FINALIZE;
 }
 

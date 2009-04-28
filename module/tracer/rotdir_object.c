@@ -48,6 +48,14 @@ static PyMethodDef pyrotdir_methods[] = {
 	{NULL, NULL}
 };
 
+static PyMemberDef pyrotdir_members[] = {
+	{"path", T_STRING_INPLACE, offsetof(RotdirObject, rotdir) + offsetof(rotdir_t, path), READONLY,
+	 PyDoc_STR("The rotdir path")},
+	{"max_files", T_INT, offsetof(RotdirObject, rotdir) + offsetof(rotdir_t, max_files), READONLY,
+	 PyDoc_STR("The rotdir max_files")},
+	{0}
+};
+
 PyDoc_STRVAR(pyrotdir_doc, "Rotdir(path, max_files)");
 
 PyTypeObject Rotdir_Type = {
@@ -80,7 +88,7 @@ PyTypeObject Rotdir_Type = {
 	0,                                      /* tp_iter */
 	0,                                      /* tp_iternext */
 	pyrotdir_methods,                       /* tp_methods */
-	0,                                      /* tp_members */
+	pyrotdir_members,                       /* tp_members */
 	0,                                      /* tp_getset */
 	0,                                      /* tp_base */
 	0,                                      /* tp_dict */

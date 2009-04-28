@@ -14,17 +14,17 @@ typedef enum {
 } errcode_t;
 
 #define OUT
-#define IS_ERROR(code)       ((code) != ERR_SUCCESS)
+#define IS_ERROR(__code)       ((__code) != ERR_SUCCESS)
 #define RETURN_SUCCESSFUL    return ERR_SUCCESS
-#define PROPAGATE(expr) \
-	{errcode_t code = expr; if (IS_ERROR(code)) return code;}
-#define PROPAGATE_TO(label, expr) \
-	{errcode_t code = expr; if (IS_ERROR(code)) goto label;}
-#define ASSERT(expr) \
+#define PROPAGATE(__expr) \
+	{errcode_t __code = __expr; if (IS_ERROR(__code)) return __code;}
+#define PROPAGATE_TO(__label, __expr) \
+	{errcode_t __code = __expr; if (IS_ERROR(__code)) goto __label;}
+#define ASSERT(__expr) \
 	{ \
-	errcode_t code = expr; \
-	if (IS_ERROR(code)) { \
-		printf("%s(%d): %s\n    %s\n", __FILE__, __LINE__, #expr, errcode_get_name(code)); \
+	errcode_t __code = __expr; \
+	if (IS_ERROR(__code)) { \
+		printf("%s(%d): %s\n    %s\n", __FILE__, __LINE__, #__expr, errcode_get_name(__code)); \
 		abort(); \
 	} \
 	}

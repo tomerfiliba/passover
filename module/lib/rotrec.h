@@ -22,7 +22,7 @@ typedef struct {
 } rotrec_t;
 
 
-typedef rotret_record_size_t uint16_t;
+typedef uint16_t rotret_record_size_t;
 
 int rotrec_init(rotrec_t * self, rotdir_t * rotdir, const char * file_prefix,
 		size_t map_size, off_t file_size);

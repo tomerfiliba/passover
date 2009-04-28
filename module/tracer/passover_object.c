@@ -1,9 +1,7 @@
 #include "passover_object.h"
 #include "rotdir_object.h"
+#include "tracefunc.h"
 
-
-int _tracefunc(PassoverObject * self, PyFrameObject * frame,
-        int event, PyObject * arg);
 
 
 /***************************************************************************
@@ -83,7 +81,7 @@ static PyObject * passover_start(PassoverObject * self, PyObject * noarg)
 		return NULL;
 	}
 	self->used = 1;
-	PyEval_SetProfile((Py_tracefunc)_tracefunc, (PyObject*)self);
+	PyEval_SetProfile((Py_tracefunc)tracefunc, (PyObject*)self);
 	self->active = 1;
 	Py_RETURN_NONE;
 }

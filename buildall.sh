@@ -8,5 +8,6 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-cp build/lib*/_passover.so ..
+cd ..
+cp module/build/lib*/_passover.so .
 
