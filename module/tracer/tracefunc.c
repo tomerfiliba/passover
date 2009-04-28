@@ -6,7 +6,6 @@
 		errcode_t __code = __expr; \
 		if (IS_ERROR(__code)) { \
 			if (PyErr_Occurred() == NULL) { \
-				printf("FAILED %s(%d)\n", __FILE__, __LINE__); \
 				PyErr_SetString(ErrorObject, errcode_get_name(__code)); \
 			} \
 			return -1; \
@@ -65,7 +64,7 @@ static inline int _tracefunc_pycall(PassoverObject * self, PyFrameObject * frame
 {
 	PyCodeObject * code = frame->f_code;
 
-	printf("PYCALL\n");
+	//printf("PYCALL\n");
 
 	// ??? should logs be emitted even if a function is ignored?
 	if (_tracefunc_is_call_ignored(self, code->co_flags)) {
@@ -89,7 +88,7 @@ static inline int _tracefunc_pycall(PassoverObject * self, PyFrameObject * frame
 
 static inline int _tracefunc_pyret(PassoverObject * self, PyCodeObject * code, PyObject * retval)
 {
-	printf("PYRET\n");
+	//printf("PYRET\n");
 	if (_tracefunc_is_ret_ignored(self, code->co_flags)) {
 		return 0;
 	}
@@ -106,7 +105,7 @@ static inline int _tracefunc_pyret(PassoverObject * self, PyCodeObject * code, P
 
 static inline int _tracefunc_pyexc(PassoverObject * self, PyCodeObject * code, PyObject * excval)
 {
-	printf("PYEXC\n");
+	//printf("PYEXC\n");
 	if (_tracefunc_is_ret_ignored(self, code->co_flags)) {
 		return 0;
 	}
@@ -118,7 +117,7 @@ static inline int _tracefunc_pyexc(PassoverObject * self, PyCodeObject * code, P
 
 static inline int _tracefunc_ccall(PassoverObject * self, PyCFunctionObject * func)
 {
-	printf("CCALL\n");
+	//printf("CCALL\n");
 
 	if (_tracefunc_is_call_ignored(self, func->m_ml->ml_flags)) {
 		return 0;
@@ -130,7 +129,7 @@ static inline int _tracefunc_ccall(PassoverObject * self, PyCFunctionObject * fu
 
 static inline int _tracefunc_cret(PassoverObject * self, PyCFunctionObject * func)
 {
-	printf("CRET\n");
+	//printf("CRET\n");
 
 	if (_tracefunc_is_ret_ignored(self, func->m_ml->ml_flags)) {
 		return 0;
@@ -142,7 +141,7 @@ static inline int _tracefunc_cret(PassoverObject * self, PyCFunctionObject * fun
 
 static inline int _tracefunc_cexc(PassoverObject * self, PyCFunctionObject * func, PyObject * excval)
 {
-	printf("CEXC\n");
+	//printf("CEXC\n");
 
 	if (_tracefunc_is_ret_ignored(self, func->m_ml->ml_flags)) {
 		return 0;
