@@ -32,17 +32,17 @@ def _set_flag(func, flag):
     # python will not allow for unknown flags... pitty
     if isinstance(func, BuiltinFunctionType):
         pass
-        #_hptrace._set_builtin_flags(func, flag)
+        #_passover._set_builtin_flags(func, flag)
     else:
-        _hptrace._set_code_flags(_get_code(func), flag)
+        _passover._set_code_flags(_get_code(func), flag)
     return func
 
 def _clear_flag(func, flag):
     if isinstance(func, BuiltinFunctionType):
-        #_hptrace._clear_builtin_flags(func, flag)
+        #_passover._clear_builtin_flags(func, flag)
         pass
     else:
-        _hptrace._clear_code_flags(_get_code(func), flag)
+        _passover._clear_code_flags(_get_code(func), flag)
     return func
 
 def _get_all_functions(codepred, bltpred):
@@ -69,7 +69,7 @@ def ignore_module(module, mode = WHOLE):
         return obj.func_code.co_filename.startswith(fn)
     def bltpred(obj, modname = module.__name__):
         return obj.__module__ == modname
-    for func in _get_all_functions(codepred, bltpred):
+    for func in (codepred, bltpred):
         ignore_function(func, mode)
 
 def ignore_package(module, mode = WHOLE):
