@@ -4,10 +4,11 @@ cd module
 python setup.py build
 
 if [ $? -ne 0 ]; then
-    echo "-- failed --"
+    echo "-- FAILED --"
     exit 1
 fi
 
 cd ..
 cp module/build/lib*/_passover.so .
+echo "-- SUCCESS --"
 

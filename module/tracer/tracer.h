@@ -18,11 +18,23 @@
 #define TRACER_RECORD_CRAISE  6
 #define TRACER_RECORD_LOG     7
 
+#define TRACER_PYOBJ_NONE       0
+#define TRACER_PYOBJ_UNDUMPABLE 1
+#define TRACER_PYOBJ_TRUE       2
+#define TRACER_PYOBJ_FALSE      3
+#define TRACER_PYOBJ_INT        4
+#define TRACER_PYOBJ_LONG       5
+#define TRACER_PYOBJ_FLOAT      6
+#define TRACER_PYOBJ_STR        7
+#define TRACER_PYOBJ_TYPE       8
+#define TRACER_PYOBJ_OID        9
+
 
 typedef struct {
 	int        depth;
 	rotrec_t   records;
 	swriter_t  stream;
+	swriter_t  cpstream;
 	listfile_t codepoints;
 	htable_t   table;
 } tracer_t;

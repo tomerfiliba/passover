@@ -133,7 +133,7 @@ inline errcode_t htable_get(htable_t * self, int hash, htable_key_t key,
 inline int htable_contains(htable_t * self, int hash, htable_key_t key)
 {
 	htable_value_t v;
-	return (htable_get(self, hash, key, &v) == 0) ? 1 : 0;
+	return htable_get(self, hash, key, &v) != ERR_HTABLE_GET_KEY_MISSING;
 }
 
 static inline errcode_t _htable_add(htable_t * self, htable_key_t key, htable_value_t value, OUT int * outindex)

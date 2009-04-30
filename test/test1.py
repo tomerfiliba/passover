@@ -25,11 +25,11 @@ def k(x):
 
 with passover.traced("tmp"):
     f(1,2,3)
-    #g()
-    #h(3)
+    g()
+    h(3)
     k(9)
-    #h(4)
-    #g()
+    h(4)
+    g()
 
 
 
