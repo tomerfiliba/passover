@@ -59,6 +59,9 @@ errcode_t tracer_fini(tracer_t * self)
 #define DUMP_UI32(stream, num) \
 	PROPAGATE(swriter_dump_uint32(stream, num))
 
+#define DUMP_UI64(stream, num) \
+	PROPAGATE(swriter_dump_uint64(stream, num))
+
 #define DUMP_CSTR(stream, str) \
 	PROPAGATE(swriter_dump_cstr(stream, str))
 
@@ -72,6 +75,7 @@ static inline int _tracer_hash_pyobject(void * obj)
 
 static inline errcode_t _tracer_save_codeobj(swriter_t * cpstream, PyCodeObject * code)
 {
+	DUMP_UI8(cpstream, TRACER_CODEPOINT_PYFUNC);
 #ifdef TRACER_DUMP_ABSPATH
 	char * realpath = canonicalize_file_name(PyString_AS_STRING(code->co_filename));
 	if (realpath == NULL) {
@@ -93,6 +97,7 @@ static inline errcode_t _tracer_save_codeobj(swriter_t * cpstream, PyCodeObject 
 
 static inline errcode_t _tracer_save_cfunc(swriter_t * cpstream, PyCFunctionObject * func)
 {
+	DUMP_UI8(cpstream, TRACER_CODEPOINT_CFUNC);
 	if (func->m_module == NULL) {
 		DUMP_CSTR(cpstream, "");
 	}
@@ -116,6 +121,7 @@ static inline errcode_t _tracer_save_logline(swriter_t * cpstream, PyObject * ob
 	if (!PyString_CheckExact(obj)) {
 		return ERR_TRACER_LOGLINE_NOT_STRING;
 	}
+	DUMP_UI8(cpstream, TRACER_CODEPOINT_LOGLINE);
 	DUMP_PYSTR(cpstream, obj);
 	RETURN_SUCCESSFUL;
 }
@@ -198,8 +204,14 @@ static inline errcode_t _tracer_dump_argument(tracer_t * self, PyObject * obj)
 		}
 	}
 	else if (PyInt_CheckExact(obj)) {
-		DUMP_UI8(&self->stream, TRACER_PYOBJ_INT);
-		PROPAGATE(_tracer_dump_obj_repr(&self->stream, obj, -1));
+		long val = ((PyIntObject*)obj)->ob_ival;
+		if (val >= TRACER_PYOBJ_MIN_IMM_INT && val <= TRACER_PYOBJ_MAX_IMM_INT) {
+			DUMP_UI8(&self->stream, TRACER_PYOBJ_IMMINT_0 + val);
+		}
+		else {
+			DUMP_UI8(&self->stream, TRACER_PYOBJ_INT);
+			PROPAGATE(_tracer_dump_obj_repr(&self->stream, obj, -1));
+		}
 	}
 	else if (PyLong_CheckExact(obj)) {
 		DUMP_UI8(&self->stream, TRACER_PYOBJ_LONG);

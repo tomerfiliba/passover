@@ -18,6 +18,11 @@
 #define TRACER_RECORD_CRAISE  6
 #define TRACER_RECORD_LOG     7
 
+#define TRACER_CODEPOINT_INVALID  0
+#define TRACER_CODEPOINT_LOGLINE  1
+#define TRACER_CODEPOINT_PYFUNC   2
+#define TRACER_CODEPOINT_CFUNC    3
+
 #define TRACER_PYOBJ_NONE       0
 #define TRACER_PYOBJ_UNDUMPABLE 1
 #define TRACER_PYOBJ_TRUE       2
@@ -28,6 +33,10 @@
 #define TRACER_PYOBJ_STR        7
 #define TRACER_PYOBJ_TYPE       8
 #define TRACER_PYOBJ_OID        9
+
+#define TRACER_PYOBJ_MIN_IMM_INT   (-20)
+#define TRACER_PYOBJ_MAX_IMM_INT   (30)
+#define TRACER_PYOBJ_IMMINT_0      50
 
 
 typedef struct {
