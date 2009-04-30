@@ -69,7 +69,7 @@ def ignore_module(module, mode = WHOLE):
         return obj.func_code.co_filename.startswith(fn)
     def bltpred(obj, modname = module.__name__):
         return obj.__module__ == modname
-    for func in _get_all_functions(bltpred, codepred):
+    for func in _get_all_functions(codepred, bltpred):
         ignore_function(func, mode)
 
 def ignore_package(module, mode = WHOLE):
@@ -88,7 +88,7 @@ def ignore_package(module, mode = WHOLE):
     def bltpred(obj, modname = module.__name__):
         return obj.__module__ and obj.__module__.startswith(modname)
     
-    for func in _get_all_functions(bltpred, codepred):
+    for func in _get_all_functions(codepred, bltpred):
         ignore_function(func, mode)
 
 #===============================================================================
