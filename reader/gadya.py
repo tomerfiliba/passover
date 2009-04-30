@@ -55,7 +55,7 @@ def dump(rec):
 
 
 if __name__ == "__main__":
-    sys.argv = ["foo", "../test/tmp", "thread-0"]
+    #sys.argv = ["foo", "../test/tmp", "thread-0"]
     try:
         path, prefix  = sys.argv[1:]
     except ValueError:
