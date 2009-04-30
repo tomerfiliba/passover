@@ -1,6 +1,7 @@
 from __future__ import with_statement
 import sys
 import os
+import gc
 import itertools
 import thread
 import shutil
@@ -56,7 +57,7 @@ def _get_all_functions(codepred, bltpred):
 SINGLE = _passover.CO_PASSOVER_IGNORED_SINGLE
 CHILDREN = _passover.CO_PASSOVER_IGNORED_CHILDREN
 WHOLE = _passover.CO_PASSOVER_IGNORED_WHOLE
-DETAILED = _passover.CO_PASSOVER_DETAILED
+#DETAILED = _passover.CO_PASSOVER_DETAILED
 
 def ignore_function(func, mode = CHILDREN):
     return _set_flag(func, mode)

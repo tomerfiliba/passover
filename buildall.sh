@@ -1,6 +1,7 @@
 #!/bin/bash
 
 cd module
+rm -rf build
 python setup.py build
 
 if [ $? -ne 0 ]; then
