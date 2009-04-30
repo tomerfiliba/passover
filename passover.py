@@ -5,6 +5,7 @@ import gc
 import itertools
 import thread
 import shutil
+from types import FunctionType, BuiltinFunctionType
 from contextlib import contextmanager
 import _passover
 
