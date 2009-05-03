@@ -261,7 +261,7 @@ class TraceReader(object):
 
 
 if __name__ == "__main__":
-    reader = TraceReader("../test/tmp", "thread-0", "../test/tmpcodepoints-0")
+    reader = TraceReader("../test/tmp", "thread-0", "../test/tmp/codepoints-0")
     for rec in reader:
         print rec, rec.codepoint
 

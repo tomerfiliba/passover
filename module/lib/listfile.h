@@ -13,7 +13,7 @@ typedef struct _listfile_t {
 	fwindow_t  head;
 } listfile_t;
 
-typedef uint32_t listfile_recsize_t;
+typedef uint16_t listfile_recsize_t;
 
 errcode_t listfile_init(listfile_t * self, int fd);
 errcode_t listfile_fini(listfile_t * self);

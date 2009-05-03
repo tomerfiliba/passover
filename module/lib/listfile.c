@@ -30,7 +30,8 @@ errcode_t listfile_append(listfile_t * self, const void * buffer,
 }
 
 /*
-errcode_t listfile_append2(listfile_t * self, const void * buffer, uint32_t size, OUT off_t * outpos)
+errcode_t listfile_append2(listfile_t * self, const void * buffer,
+		listfile_recsize_t size, OUT off_t * outpos)
 {
 	*outpos = self->head.pos;
 	PROPAGATE(fwindow_write(&self->head, &size, sizeof(size)));
