@@ -197,14 +197,6 @@ class LogRecord(TraceRecord):
 #===============================================================================
 # Files
 #===============================================================================
-def listfile_reader(file):
-    while True:
-        try:
-            length, = UINT32.unpack(file.read(UINT32.size))
-        except StructError:
-            break
-        yield file.read(length)
-
 def recfile_reader(file):
     while True:
         try:

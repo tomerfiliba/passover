@@ -19,7 +19,8 @@ errcode_t listfile_fini(listfile_t * self)
 	return fwindow_fini(&self->head);
 }
 
-errcode_t listfile_append(listfile_t * self, const void * buffer, uint32_t size, OUT int * outindex)
+errcode_t listfile_append(listfile_t * self, const void * buffer,
+		listfile_recsize_t size, OUT int * outindex)
 {
 	*outindex = self->next_index;
 	PROPAGATE(fwindow_write(&self->head, &size, sizeof(size)));

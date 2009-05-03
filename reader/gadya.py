@@ -19,34 +19,55 @@ def dumper(type):
 
 @dumper(filestructs.PyFuncCall)
 def dump_PyFuncCall(rec):
-    return ">>> %s(%s)   [%s:%s]" % (rec.codepoint.name, ", ".join(repr(a) for a in rec.args), 
-        rec.codepoint.filename, rec.codepoint.lineno)
+    if rec.codepoint:
+        return ">>> %s(%s)   [%s:%s]" % (rec.codepoint.name, ", ".join(repr(a) for a in rec.args), 
+            rec.codepoint.filename, rec.codepoint.lineno)
+    else:
+        return ">>> <no codepoint>"
 
 @dumper(filestructs.PyFuncRet)
 def dump_PyFuncRet(rec):
-    return "<<< %s(%r)   [%s:%s]" % (rec.codepoint.name, rec.retval, 
-        rec.codepoint.filename, rec.codepoint.lineno)
+    if rec.codepoint:
+        return "<<< %s(%r)   [%s:%s]" % (rec.codepoint.name, rec.retval, 
+            rec.codepoint.filename, rec.codepoint.lineno)
+    else:
+        return "<<< <no codepoint>"
 
 @dumper(filestructs.PyFuncRaise)
 def dump_PyFuncRaise(rec):
-    return "XXX %s(?)   [%s:%s]" % (rec.codepoint.name, rec.codepoint.filename, 
-        rec.codepoint.lineno)
+    if rec.codepoint:
+        return "XXX %s(?)   [%s:%s]" % (rec.codepoint.name, rec.codepoint.filename, 
+            rec.codepoint.lineno)
+    else:
+        return "XXX <no codepoint>"
 
 @dumper(filestructs.CFuncCall)
 def dump_CFuncCall(rec):
-    return ">>> %s(?)   [%s]" % (rec.codepoint.name, ec.codepoint.module)
+    if rec.codepoint:
+        return ">>> %s(?)   [%s]" % (rec.codepoint.name, ec.codepoint.module)
+    else:
+        return ">>> <no codepoint>"
 
 @dumper(filestructs.CFuncRet)
 def dump_CFuncRet(rec):
-    return "<<< %s(?)   [%s]" % (rec.codepoint.name, ec.codepoint.module)
+    if rec.codepoint:
+        return "<<< %s(?)   [%s]" % (rec.codepoint.name, ec.codepoint.module)
+    else:
+        return "<<< <no codepoint>"
 
 @dumper(filestructs.CFuncRaise)
 def dump_CFuncRaise(rec):
-    return "XXX %s(?)   [%s]" % (rec.codepoint.name, ec.codepoint.module)
+    if rec.codepoint:
+        return "XXX %s(?)   [%s]" % (rec.codepoint.name, ec.codepoint.module)
+    else:
+        return "XXX <no codepoint>"
 
 @dumper(filestructs.LogRecord)
 def dump_LogRecord(rec):
-    return "LOG %s" % (rec.codepoint.format % rec.args)
+    if rec.codepoint:
+        return "LOG %s" % (rec.codepoint.format % rec.args)
+    else:
+        return "LOG <no codepoint>"
 
 def dump(rec):
     t = time.strftime("%m/%d %H:%M:%S", time.localtime(rec.timestamp))
@@ -59,7 +80,7 @@ if __name__ == "__main__":
     try:
         path, prefix  = sys.argv[1:]
     except ValueError:
-        sys.exit("Usage: gadya /tmp/traces thread-0")
+        sys.exit("Usage: gadya /local/tlib/passover thread-0")
     #all_files = os.listdir(path)
     #traces = sorted(set(fn.rsplit(".", 2)[0] for fn in all_files if fn.endswith(".rot")))
     index = prefix.rsplit("-", 1)[1]
