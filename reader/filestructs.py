@@ -214,7 +214,7 @@ class TraceReader(object):
 
     def load_codepoints(self):
         codepoints = []
-        for data in listfile_reader(open(self.cpfile, "rb")):
+        for data in rec_reader(open(self.cpfile, "rb")):
             try:
                 cp = CodepointRecord.load(data)
             except EOFError:
