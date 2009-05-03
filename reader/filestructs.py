@@ -6,10 +6,10 @@ from cStringIO import StringIO
 from struct import Struct, error as StructError
 
 
-UINT8 = Struct("B")
-UINT16 = Struct("H")
-UINT32 = Struct("L")
-UINT64 = Struct("Q")
+UINT8 = Struct("=B")
+UINT16 = Struct("=H")
+UINT32 = Struct("=L")
+UINT64 = Struct("=Q")
 
 class BinaryRecord(object):
     TYPE = None
