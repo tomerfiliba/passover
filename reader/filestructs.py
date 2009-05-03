@@ -82,7 +82,7 @@ class CFuncCodepoint(CodepointRecord):
     
     def parse(self, stream):
         self.module = self.read_str(stream)
-        self.name = self.read_str(name)
+        self.name = self.read_str(stream)
 
 #===============================================================================
 # trace records
