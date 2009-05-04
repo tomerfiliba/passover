@@ -60,6 +60,11 @@ static inline errcode_t _rotrec_open_window(rotrec_t * self)
 	}
 	PROPAGATE_TO(error3, retcode = fwindow_init(&self->window, fd, self->map_size));
 
+	/*
+	 * TODO: store the base_offset in the first "special" record, so we can
+	 * later determine this file's correct location.
+	 */
+
 	self->flags |= ROTREC_FLAG_WINDOW_INITED;
 	self->rotdir_slot = slot;
 	RETURN_SUCCESSFUL;

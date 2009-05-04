@@ -215,13 +215,15 @@ class TraceReader(object):
         self.tifile = prefix + ".timeindex"
         
         #
-        # bug bug bug bug!! the index is per the entire directory, so if you
+        # BUG BUG BUG!! the index is per the entire directory, so if you
         # have more than one thread, you'll have gaps, i.e.
         # thread-0.000001.rot
         # thread-1.000002.rot
-        # thread-0.000003.rot <<-- need to fix that (perhaps include in the 
-        # beginning of the file it's calculated offset when rotrec switches
-        # files
+        # thread-0.000003.rot
+        # 
+        # fix: the first record in the file must hold the start_offset --
+        # or (file_index, file_size).we can calculate index the files either 
+        # way. see _rotrec_open_window
         #
         
         files = sorted(
