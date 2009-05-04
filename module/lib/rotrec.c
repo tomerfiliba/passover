@@ -21,6 +21,7 @@ errcode_t rotrec_init(rotrec_t * self, rotdir_t * rotdir, const char * file_pref
 	}
 
 	self->flags = 0;
+	self->base_offset = 0;
 	self->rotdir_slot = -1;
 	self->rotdir = rotdir;
 	self->file_size = file_size;
@@ -78,6 +79,7 @@ static inline int _rotrec_ensure(rotrec_t * self, size_t size)
 			// record will not fit in this file, so we need to close it
 			PROPAGATE(_rotrec_close_window(self));
 		}
+		self->base_offset += self->file_size;
 	}
 	if (!(self->flags & ROTREC_FLAG_WINDOW_INITED)) {
 		PROPAGATE(_rotrec_open_window(self));
@@ -98,13 +100,17 @@ errcode_t rotrec_fini(rotrec_t * self)
 	RETURN_SUCCESSFUL;
 }
 
-errcode_t rotrec_write(rotrec_t * self, const void * buf, rotret_record_size_t size)
+errcode_t rotrec_write(rotrec_t * self, const void * buf, rotret_record_size_t size, off_t * outoffset)
 {
 	if (size > self->file_size) {
 		return ERR_ROTREC_SIZE_TOO_LARGE;
 	}
 
 	PROPAGATE(_rotrec_ensure(self, size));
+	if (outoffset != NULL) {
+		*outoffset = fwindow_tell(&self->window);
+		*outoffset += self->base_offset;
+	}
 	PROPAGATE(fwindow_write(&self->window, &size, sizeof(size)));
 	PROPAGATE(fwindow_write(&self->window, buf, size));
 

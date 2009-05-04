@@ -6,12 +6,16 @@
 #include "swriter.h"
 
 
-errcode_t swriter_init(swriter_t * self, size_t size)
+errcode_t swriter_init(swriter_t * self, void * buffer, size_t size)
 {
 	self->size = size;
-	self->buffer = malloc(size);
+	self->free = 0;
+	self->buffer = buffer;
 	if (self->buffer == NULL) {
-		return ERR_SWRITER_MALLOC_FAILED;
+		self->buffer = malloc(size);
+		if (self->buffer == NULL) {
+			return ERR_SWRITER_MALLOC_FAILED;
+		}
 	}
 	self->pos = self->buffer;
 	RETURN_SUCCESSFUL;
@@ -19,7 +23,8 @@ errcode_t swriter_init(swriter_t * self, size_t size)
 
 errcode_t swriter_fini(swriter_t * self)
 {
-	if (self->buffer != NULL) {
+	if (self->free && self->buffer != NULL) {
+		self->free = 0;
 		free(self->buffer);
 		self->buffer = NULL;
 	}

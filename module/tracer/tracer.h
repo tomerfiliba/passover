@@ -3,6 +3,7 @@
 
 #include "python.h"
 #include "../lib/errors.h"
+#include "../lib/hptime.h"
 #include "../lib/htable.h"
 #include "../lib/listfile.h"
 #include "../lib/rotdir.h"
@@ -38,19 +39,22 @@
 #define TRACER_PYOBJ_MAX_IMM_INT   (30)
 #define TRACER_PYOBJ_IMMINT_0      50
 
+#define TRACER_TIMEINDEX_INTERVAL  (1000000)
 
 typedef struct {
 	int        depth;
+	usec_t     next_timestamp;
 	rotrec_t   records;
 	swriter_t  stream;
 	swriter_t  cpstream;
 	listfile_t codepoints;
+	listfile_t timeindex;
 	htable_t   table;
 } tracer_t;
 
 
 errcode_t tracer_init(tracer_t * self, rotdir_t * dir, const char * prefix,
-		const char * codepoints_filename, size_t map_size, size_t file_size);
+		size_t map_size, size_t file_size);
 errcode_t tracer_fini(tracer_t * self);
 errcode_t tracer_log(tracer_t * self, PyObject * fmtstr, PyObject * argstuple);
 errcode_t tracer_pyfunc_call(tracer_t * self, PyCodeObject * code, int argcount,

@@ -10,6 +10,7 @@ UINT8 = Struct("=B")
 UINT16 = Struct("=H")
 UINT32 = Struct("=L")
 UINT64 = Struct("=Q")
+TIMEINDEX_RECORD = Struct("=QQ")
 
 class BinaryRecord(object):
     TYPE = None
@@ -136,7 +137,7 @@ class TraceRecord(BinaryRecord):
     def read_argument(cls, stream):
         type = cls.read_uint8(stream)
         return cls.ARGUMENT_READERS[type](cls, stream)
-    
+    oldest
     def __repr__(self):
         return "%s(depth = %s, timestamp = %s, cpindex = %s)" % (
             self.__class__.__name__, self.depth, self.timestamp, self.cpindex)
@@ -206,15 +207,39 @@ def recfile_reader(file):
         yield file.read(length)
 
 class TraceReader(object):
-    def __init__(self, path, prefix, cpfile):
+    def __init__(self, path, prefix, rot_file_size = 100 * 1024 * 1024):
         self.path = path
+        self.rot_file_size = rot_file_size
         self.prefix = prefix
-        self.cpfile = cpfile
-        self.codepoints = self.load_codepoints()
+        self.cpfile = prefix + ".codepoints"
+        self.tifile = prefix + ".timeindex"
+        
+        #
+        # bug bug bug bug!! the index is per the entire directory, so if you
+        # have more than one thread, you'll have gaps, i.e.
+        # thread-0.000001.rot
+        # thread-1.000002.rot
+        # thread-0.000003.rot <<-- need to fix that (perhaps include in the 
+        # beginning of the file it's calculated offset when rotrec switches
+        # files
+        #
+        
+        files = sorted(
+            (int(fn[len(prefix):].split(".")[0]), fn)
+            for fn in os.listdir(self.path) 
+                if fn.startswith(self.prefix) and fn.endswith(".rot")
+        )
+        self.oldest_file_index = files[0][0]
+        self.latest_file_index = files[-1][0]
+        self.files = dict(files)
+        self.codepoints = self._load_codepoints()
+        self.timeindex = self._load_timeindex()
+        self.currfile = None
+        self.currindex = None
 
-    def load_codepoints(self):
+    def _load_codepoints(self):
         codepoints = []
-        for data in recfile_reader(open(self.cpfile, "rb")):
+        for data in recfile_reader(open(os.path.join(path, self.cpfile), "rb")):
             try:
                 cp = CodepointRecord.load(data)
             except EOFError:
@@ -222,8 +247,45 @@ class TraceReader(object):
             codepoints.append(cp)
         return codepoints
 
-    def tracefile_reader(self, file):
-        for data in recfile_reader(file):
+    def _load_timeindex(self):
+        f = open(os.path.join(path, self.tifile), "rb")
+        timeindex = []
+        while True:
+            data = f.read(TIMEINDEX_RECORD.size)
+            if len(data) != TIMEINDEX_RECORD.size:
+                break
+            timestamp, offset = TIMEINDEX_RECORD.unpack(data)
+            timeindex.append((timestamp, offset))
+        f.close()
+        return timeindex
+    
+    def _seek_to_file_index(self, index):
+        """
+        if the given file exists, select it and return True. if it does not
+        exist, it means it has already been rotated -- so select oldest existing
+        file and return False
+        """
+        if index < self.oldest_file_index:
+            index = self.oldest_file_index
+            found = False
+        elif index > self.latest_file_index:
+            index = self.latest_file_index
+            found = False
+        else:
+            found = True
+        self.currfile = open(self.files[oldest_index], "rb")
+        self.currindex = index
+        return found
+    
+    def _iter_trace_files(self):
+        if self.currfile is None:
+            self._seek_to_file_index(0)
+        while self.currindex <= self.latest_file_index:
+            self._seek_to_file_index(self.currindex + 1)
+            yield self.currfile
+
+    def _iter_currfile_records(self):
+        for data in recfile_reader(self.currfile):
             try:
                 rec = TraceRecord.load(data)
             except EOFError:
@@ -232,32 +294,27 @@ class TraceReader(object):
                 rec._codepoints = self.codepoints
                 yield rec
     
-    def _get_trace_files(self):
-        curr = None
-        while True:
-            files = sorted(fn for fn in os.listdir(self.path) 
-                if fn.startswith(self.prefix) and fn.endswith(".rot"))
-            if not files:
-                break # no files at all
-            if curr is None:
-                curr = files[0]
-            else:
-                try:
-                    index = files.index(curr)
-                except ValueError:
-                    curr = files[0]
-                else:
-                    if index + 1 >= len(files):
-                        break # finished all files
-                    else:
-                        curr = files[index + 1]
-            
-            yield open(os.path.join(self.path, curr), "rb")
-    
     def __iter__(self):
-        for file in self._get_trace_files():
-            for record in self.tracefile_reader(file):
+        for file in self._iter_trace_files():
+            for record in self._iter_currfile_records():
                 yield record
+
+    #
+    # APIs
+    #
+    def seek_to_offset(self, offset):
+        file_index = offset // self.rot_file_size
+        in_file_offset = offset % self.rot_file_size
+        if self._seek_to_file_index(file_index):
+            self.currfile.seek(in_file_offset)
+
+    def seek_to_timestamp(self, timestamp):
+        timestamp, offset = binary_search(self.timeindex, 
+            lambda obj: cmp(obj[0], timestamp))
+        self.seek_to_offset(offset)
+    
+    def read(self):
+        raise NotImplementedError()
 
 
 if __name__ == "__main__":

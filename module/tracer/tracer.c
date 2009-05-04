@@ -2,8 +2,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "../lib/errors.h"
-#include "../lib/hptime.h"
 #include "tracer.h"
 
 
@@ -11,20 +9,30 @@ typedef htable_value_t codepoint_t;
 
 
 errcode_t tracer_init(tracer_t * self, rotdir_t * dir, const char * prefix,
-		const char * codepoints_filename, size_t map_size, size_t file_size)
+		size_t map_size, size_t file_size)
 {
+	char tmpfilename[PATH_MAX];
 	errcode_t retcode = ERR_UNKNOWN;
 
 	self->depth = 0;
+	self->next_timestamp = 0;
 
 	PROPAGATE_TO(error1, retcode = htable_init(&self->table, 65535));
-	PROPAGATE_TO(error2, retcode = swriter_init(&self->stream, 16*1024));
-	PROPAGATE_TO(error3, retcode = swriter_init(&self->cpstream, 16*1024));
-	PROPAGATE_TO(error4, retcode = listfile_open(&self->codepoints, codepoints_filename));
-	PROPAGATE_TO(error5, retcode = rotrec_init(&self->records, dir, prefix, map_size, file_size));
+	PROPAGATE_TO(error2, retcode = swriter_init(&self->stream, NULL, 16*1024));
+	PROPAGATE_TO(error3, retcode = swriter_init(&self->cpstream, NULL, 16*1024));
+
+	sprintf(tmpfilename, "%s/%s.codepoints", dir->path, prefix);
+	PROPAGATE_TO(error4, retcode = listfile_open(&self->codepoints, tmpfilename));
+
+	sprintf(tmpfilename, "%s/%s.timeindex", dir->path, prefix);
+	PROPAGATE_TO(error5, retcode = listfile_open(&self->timeindex, tmpfilename));
+
+	PROPAGATE_TO(error6, retcode = rotrec_init(&self->records, dir, prefix, map_size, file_size));
 
 	RETURN_SUCCESSFUL;
 
+error6:
+	listfile_close(&self->timeindex);
 error5:
 	listfile_close(&self->codepoints);
 error4:
@@ -40,7 +48,9 @@ error1:
 errcode_t tracer_fini(tracer_t * self)
 {
 	PROPAGATE(rotrec_fini(&self->records));
+	PROPAGATE(listfile_fini(&self->timeindex));
 	PROPAGATE(listfile_fini(&self->codepoints));
+	PROPAGATE(swriter_fini(&self->cpstream));
 	PROPAGATE(swriter_fini(&self->stream));
 	PROPAGATE(htable_fini(&self->table));
 	RETURN_SUCCESSFUL;
@@ -243,17 +253,37 @@ static inline errcode_t _tracer_dump_exception(tracer_t * self, PyObject * excty
  ***************************************************************************/
 
 #define RECORD_HEADER(TYPE, GET_CP_FUNC, OBJ) \
+	usec_t _timestamp = hptime_get_time(); \
 	PROPAGATE(swriter_clear(&self->stream)); \
     PROPAGATE(swriter_dump_uint8(&self->stream, TYPE)); \
     PROPAGATE(swriter_dump_uint16(&self->stream, self->depth)); \
-	PROPAGATE(swriter_dump_uint64(&self->stream, hptime_get_time())); \
-	codepoint_t cp; \
-	PROPAGATE(GET_CP_FUNC(self, OBJ, &cp)); \
-	PROPAGATE(swriter_dump_uint16(&self->stream, cp))
+	PROPAGATE(swriter_dump_uint64(&self->stream, _timestamp)); \
+	codepoint_t _cp; \
+	PROPAGATE(GET_CP_FUNC(self, OBJ, &_cp)); \
+	PROPAGATE(swriter_dump_uint16(&self->stream, _cp))
+
+static errcode_t _tracer_timeindex_dump(tracer_t * self, usec_t timestamp, off_t offset)
+{
+	if (timestamp < self->next_timestamp) {
+		swriter_t stream;
+		char buffer[16];
+		PROPAGATE(swriter_init(&stream, buffer, sizeof(buffer)));
+		self->next_timestamp = timestamp + TRACER_TIMEINDEX_INTERVAL;
+		DUMP_UI64(&stream, (uint64_t)timestamp);
+		DUMP_UI64(&stream, (uint64_t)offset);
+		PROPAGATE(listfile_append(&self->timeindex, swriter_get_buffer(&self->stream),
+				swriter_get_length(&self->stream), NULL));
+		PROPAGATE(swriter_fini(&stream));
+	}
+	RETURN_SUCCESSFUL;
+}
 
 #define RECORD_FINALIZE \
-	return rotrec_write(&self->records, swriter_get_buffer(&self->stream), \
-				swriter_get_length(&self->stream))
+	off_t _offset; \
+	PROPAGATE(rotrec_write(&self->records, swriter_get_buffer(&self->stream), \
+				swriter_get_length(&self->stream), &_offset)); \
+	PROPAGATE(_tracer_timeindex_dump(self, _timestamp, _offset)); \
+	RETURN_SUCCESSFUL
 
 errcode_t tracer_log(tracer_t * self, PyObject * fmtstr, PyObject * argstuple)
 {

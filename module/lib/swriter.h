@@ -9,12 +9,13 @@
 
 typedef struct _swriter_t {
 	void * buffer;
+	int    free;
 	size_t size;
 	void * pos;
 } swriter_t;
 
 
-errcode_t swriter_init(swriter_t * self, size_t size);
+errcode_t swriter_init(swriter_t * self, void * buffer, size_t size);
 errcode_t swriter_fini(swriter_t * self);
 errcode_t swriter_dump_buffer(swriter_t * self, const void * buf, size_t size);
 errcode_t swriter_dump_uint8(swriter_t * self, uint8_t value);

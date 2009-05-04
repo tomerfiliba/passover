@@ -101,10 +101,7 @@ errcode_t rotdir_allocate(rotdir_t * self, const char * prefix, OUT int * outslo
 	}
 
 	pthread_mutex_lock(&self->mutex);
-	retcode = _rotdir_get_free_slot(self, &slot);
-	if (IS_ERROR(retcode)) {
-		goto cleanup;
-	}
+	PROPAGATE_TO(cleanup, retcode = _rotdir_get_free_slot(self, &slot));
 
 	self->files[slot].allocated = 1;
 	snprintf(self->files[slot].filename, sizeof(self->files[slot].filename),

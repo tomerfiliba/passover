@@ -20,26 +20,20 @@ errcode_t listfile_fini(listfile_t * self)
 }
 
 errcode_t listfile_append(listfile_t * self, const void * buffer,
-		listfile_recsize_t size, OUT int * outindex)
+		listfile_recsize_t size, int * outindex)
 {
-	*outindex = self->next_index;
-	PROPAGATE(fwindow_write(&self->head, &size, sizeof(size)));
-	PROPAGATE(fwindow_write(&self->head, buffer, size));
-	self->next_index += 1;
-	RETURN_SUCCESSFUL;
-}
+	if (outindex != NULL) {
+		*outindex = self->next_index;
+	}
+	/*if (outoffset != NULL) {
+		*outoffset = self->head.pos;
+	}*/
 
-/*
-errcode_t listfile_append2(listfile_t * self, const void * buffer,
-		listfile_recsize_t size, OUT off_t * outpos)
-{
-	*outpos = self->head.pos;
 	PROPAGATE(fwindow_write(&self->head, &size, sizeof(size)));
 	PROPAGATE(fwindow_write(&self->head, buffer, size));
 	self->next_index += 1;
 	RETURN_SUCCESSFUL;
 }
-*/
 
 errcode_t listfile_open(listfile_t * self, const char * filename)
 {

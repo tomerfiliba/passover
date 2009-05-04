@@ -21,12 +21,12 @@ typedef struct {
 } _rotdir_fileinfo_t;
 
 typedef struct {
-	char                 path[PATH_MAX];
-	int                  max_files;
-	int                  alloc_counter;
-	int                  dealloc_counter;
-	_rotdir_fileinfo_t * files;
-	pthread_mutex_t      mutex;
+	char                   path[PATH_MAX];
+	int                    max_files;
+	int                    alloc_counter;
+	int                    dealloc_counter;
+	_rotdir_fileinfo_t *   files;
+	pthread_mutex_t        mutex;
 } rotdir_t;
 
 errcode_t rotdir_init(rotdir_t * self, const char * path, int max_files);

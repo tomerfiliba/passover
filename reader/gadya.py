@@ -73,20 +73,23 @@ def dump_LogRecord(rec):
 def dump(rec):
     t = time.strftime("%m/%d %H:%M:%S", time.localtime(rec.timestamp))
     rectext = _records[type(rec)](rec)
-    print "%s %s%s" % (t, "  " * rec.depth, rectext)
+    return "%s %s%s" % (t, "  " * rec.depth, rectext)
 
 
-if __name__ == "__main__":
-    #sys.argv = ["foo", "../test/tmp", "thread-0"]
-    try:
-        path, prefix  = sys.argv[1:]
-    except ValueError:
-        sys.exit("Usage: gadya /local/tlib/passover thread-0")
-    #all_files = os.listdir(path)
-    #traces = sorted(set(fn.rsplit(".", 2)[0] for fn in all_files if fn.endswith(".rot")))
+def main(path, prefix):
     index = prefix.rsplit("-", 1)[1]
     cpfile = os.path.join(path, "codepoints-%s" % (index,))
     reader = filestructs.TraceReader(path, prefix, cpfile)
     for rec in reader:
-        dump(rec)
+        yield dump(rec)
+
+if __name__ == "__main__":
+    try:
+        path, prefix  = sys.argv[1:]
+    except ValueError:
+        sys.exit("Usage: gadya /local/tlib/passover thread-0")
+    main(path, prefix)
+    
+    #all_files = os.listdir(path)
+    #traces = sorted(set(fn.rsplit(".", 2)[0] for fn in all_files if fn.endswith(".rot")))
 
