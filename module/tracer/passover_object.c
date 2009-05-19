@@ -17,7 +17,7 @@ static PyObject * passover_new(PyTypeObject *type, PyObject * args, PyObject * k
 	size_t file_size;
 	PassoverObject * self = NULL;
 
-	if (!PyArg_ParseTupleAndKeywords(args, kw, "O!ssll:Passover", kwlist,
+	if (!PyArg_ParseTupleAndKeywords(args, kw, "O!sll:Passover", kwlist,
 	        &Rotdir_Type, &rotdirobj, &filename_prefix, &map_size, &file_size)) {
 		return NULL;
 	}
@@ -46,13 +46,9 @@ static PyObject * passover_new(PyTypeObject *type, PyObject * args, PyObject * k
 }
 
 PyDoc_STRVAR(passover_doc, "\
-Passover(filename_prefix, codepoints_filename)\n\
+Passover(rotdir, filename_prefix, map_size, file_size)\n\
 \n\
-\n\
-\n\
-\n\
-\n\
-\n\
+Creates a Passover tracer object. Use start() and stop().\n\
 \n\
 ");
 

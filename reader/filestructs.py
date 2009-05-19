@@ -137,7 +137,7 @@ class TraceRecord(BinaryRecord):
     def read_argument(cls, stream):
         type = cls.read_uint8(stream)
         return cls.ARGUMENT_READERS[type](cls, stream)
-    oldest
+    
     def __repr__(self):
         return "%s(depth = %s, timestamp = %s, cpindex = %s)" % (
             self.__class__.__name__, self.depth, self.timestamp, self.cpindex)
@@ -206,42 +206,120 @@ def recfile_reader(file):
             break
         yield file.read(length)
 
-class TraceReader(object):
-    def __init__(self, path, prefix, rot_file_size = 100 * 1024 * 1024):
-        self.path = path
-        self.rot_file_size = rot_file_size
-        self.prefix = prefix
-        self.cpfile = prefix + ".codepoints"
-        self.tifile = prefix + ".timeindex"
-        
-        #
-        # BUG BUG BUG!! the index is per the entire directory, so if you
-        # have more than one thread, you'll have gaps, i.e.
-        # thread-0.000001.rot
-        # thread-1.000002.rot
-        # thread-0.000003.rot
-        # 
-        # fix: the first record in the file must hold the start_offset --
-        # or (file_index, file_size).we can calculate index the files either 
-        # way. see _rotrec_open_window
-        #
-        
-        files = sorted(
-            (int(fn[len(prefix):].split(".")[0]), fn)
-            for fn in os.listdir(self.path) 
-                if fn.startswith(self.prefix) and fn.endswith(".rot")
-        )
-        self.oldest_file_index = files[0][0]
-        self.latest_file_index = files[-1][0]
-        self.files = dict(files)
-        self.codepoints = self._load_codepoints()
-        self.timeindex = self._load_timeindex()
-        self.currfile = None
-        self.currindex = None
+def bisect(data, value, keyfunc = lambda obj: obj, lo = 0, hi = None):
+    if hi is None:
+        hi = len(a)
+    key = keyfunc(value)
+    while lo < hi:
+        mid = (lo + hi) // 2
+        mkey = keyfunc(data[mid])
+        if mkey < key:
+            lo = mid + 1
+        elif mkey > key: 
+            hi = mid
+    return lo
 
-    def _load_codepoints(self):
+class RotdirFile(object):
+    __slots__ = ["file", "index", "min_offset", "max_offset"]
+    
+    def __init__(self, file, index, min_offset, max_offset):
+        self.file = file
+        self.index = index
+        self.min_offset = min_offset
+        self.max_offset = max_offset
+    
+    def __contains__(self, offset):
+        return self.min_offset <= offset < self.max_offset
+
+    def seek(self, offset):
+        self.file.seek(offset - self.min_offset)
+    
+    def read(self, count):
+        return self.file.read(count)
+
+ROTREC_HEADER = UINT64
+
+class RotdirReader(object):
+    __slots__ = ["path", "files", "min_offset", "max_offset", "curr_file", "curr_offset"]
+    
+    def __init__(self, path, prefix):
+        self.path = path
+        files = [fn for fn in os.listdir(self.path) 
+            if fn.startswith(prefix) and fn.endswith(".rot")]
+        self.files = []
+        for fn in files:
+            fn = os.path.join(self.path, fn)
+            data = open(fn, "rb").read(ROTREC_HEADER.size)
+            if len(data) != ROTREC_HEADER.size:
+                break
+            base_offset, = ROTREC_HEADER.unpack(data)
+            self.files.append((base_offset, fn))
+        if not self.files:
+            raise ValueError("")
+        self.files.sort(key = lambda obj: obj[0])
+        self.min_offset = self.files[0][0]
+        last_base, last_fn = self.files[-1]
+        self.max_offset = last_base + os.stat(last_fn).st_size
+        self.curr_file = None
+        self.curr_offset = None
+    
+    def _get_file_index(self, offset):
+        if offset < self.min_offset or offset > self.max_offset:
+            raise ValueError("offset %r is out of bounds [%r, %r)" % (offset, 
+                self.min_offset, self.max_offset))
+        i = bisect(self.files, [offset], keyfunc = lambda obj: obj[0])
+        assert i > 0
+        return i - 1
+
+    def _select(self, index):
+        base, fn = self.files[index]
+        if index == len(self.files) - 1:
+            max = self.max_offset
+        else:
+            max, _ = self.files[index + 1]
+        file = open(fn, "rb")
+        file.seek(ROTREC_HEADER.size)
+        self.curr_file = RotdirFile(file, index, base, max)
+    
+    def _select_next(self):
+        if self.curr_file.index + 1 > len(self.files):
+            raise EOFError()
+        self._select(self.curr_file.index + 1)
+    
+    def seek(self, offset):
+        self._select(self._get_file_index(offset))
+        self.curr_file.seek(offset)
+    
+    def _read_record(self):
+        try:
+            length, = UINT16.unpack(self.curr_file.read(UINT16.size))
+        except StructError:
+            raise EOFError()
+        data = self.curr_file.read(length)
+        #if len(data) != length:
+        #    raise EOFError()
+        return data
+    
+    def read_record(self):
+        if self.curr_file is None:
+            self._select(0)
+        try:
+            return self._read_record()
+        except EOFError:
+            self._select_next()
+            return self._read_record()
+
+class TraceReader(object):
+    __slots__ = ["rotdir", "codepoints", "timeindex"]
+    def __init__(self, path, prefix):
+        self.rotdir = RotdirReader(path, prefix)
+        self.codepoints = self._load_codepoints(os.path.join(path, prefix + ".codepoints"))
+        self.timeindex = self._load_timeindex(os.path.join(path, prefix + ".timeindex"))
+
+    @classmethod
+    def _load_codepoints(cls, filename):
         codepoints = []
-        for data in recfile_reader(open(os.path.join(path, self.cpfile), "rb")):
+        for data in recfile_reader(open(filename, "rb")):
             try:
                 cp = CodepointRecord.load(data)
             except EOFError:
@@ -249,8 +327,9 @@ class TraceReader(object):
             codepoints.append(cp)
         return codepoints
 
-    def _load_timeindex(self):
-        f = open(os.path.join(path, self.tifile), "rb")
+    @classmethod
+    def _load_timeindex(cls, filename):
+        f = open(filename, "rb")
         timeindex = []
         while True:
             data = f.read(TIMEINDEX_RECORD.size)
@@ -261,66 +340,33 @@ class TraceReader(object):
         f.close()
         return timeindex
     
-    def _seek_to_file_index(self, index):
-        """
-        if the given file exists, select it and return True. if it does not
-        exist, it means it has already been rotated -- so select oldest existing
-        file and return False
-        """
-        if index < self.oldest_file_index:
-            index = self.oldest_file_index
-            found = False
-        elif index > self.latest_file_index:
-            index = self.latest_file_index
-            found = False
-        else:
-            found = True
-        self.currfile = open(self.files[oldest_index], "rb")
-        self.currindex = index
-        return found
-    
-    def _iter_trace_files(self):
-        if self.currfile is None:
-            self._seek_to_file_index(0)
-        while self.currindex <= self.latest_file_index:
-            self._seek_to_file_index(self.currindex + 1)
-            yield self.currfile
-
-    def _iter_currfile_records(self):
-        for data in recfile_reader(self.currfile):
-            try:
-                rec = TraceRecord.load(data)
-            except EOFError:
-                break
-            else:
-                rec._codepoints = self.codepoints
-                yield rec
-    
-    def __iter__(self):
-        for file in self._iter_trace_files():
-            for record in self._iter_currfile_records():
-                yield record
-
     #
     # APIs
     #
     def seek_to_offset(self, offset):
-        file_index = offset // self.rot_file_size
-        in_file_offset = offset % self.rot_file_size
-        if self._seek_to_file_index(file_index):
-            self.currfile.seek(in_file_offset)
-
+        self.rotdir.seek(offset)
+    
     def seek_to_timestamp(self, timestamp):
-        timestamp, offset = binary_search(self.timeindex, 
-            lambda obj: cmp(obj[0], timestamp))
+        i = bisect(self.timeindex, [timestamp], keyfunc = lambda obj: obj[0])
+        assert i > 0
+        ts, offset = self.timeindex[i - 1]
         self.seek_to_offset(offset)
     
     def read(self):
-        raise NotImplementedError()
-
+        data = self.rotdir.read_record()
+        rec = TraceRecord.load(data)
+        rec._codepoints = self.codepoints
+        return rec
+    
+    def __iter__(self):
+        try:
+            while True:
+                yield self.read()
+        except EOFError:
+            pass
 
 if __name__ == "__main__":
-    reader = TraceReader("../test/tmp", "thread-0", "../test/tmp/codepoints-0")
+    reader = TraceReader("../test/tmp", "thread-0")
     for rec in reader:
         print rec, rec.codepoint
 

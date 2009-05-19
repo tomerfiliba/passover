@@ -264,7 +264,7 @@ static inline errcode_t _tracer_dump_exception(tracer_t * self, PyObject * excty
 
 static errcode_t _tracer_timeindex_dump(tracer_t * self, usec_t timestamp, off_t offset)
 {
-	if (timestamp < self->next_timestamp) {
+	if (timestamp >= self->next_timestamp) {
 		swriter_t stream;
 		char buffer[16];
 		PROPAGATE(swriter_init(&stream, buffer, sizeof(buffer)));

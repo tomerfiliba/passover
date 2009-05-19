@@ -75,13 +75,11 @@ def dump(rec):
     rectext = _records[type(rec)](rec)
     return "%s %s%s" % (t, "  " * rec.depth, rectext)
 
-
 def main(path, prefix):
     index = prefix.rsplit("-", 1)[1]
-    cpfile = os.path.join(path, "codepoints-%s" % (index,))
-    reader = filestructs.TraceReader(path, prefix, cpfile)
+    reader = filestructs.TraceReader(path, prefix)
     for rec in reader:
-        yield dump(rec)
+        print dump(rec)
 
 if __name__ == "__main__":
     try:
@@ -90,6 +88,6 @@ if __name__ == "__main__":
         sys.exit("Usage: gadya /local/tlib/passover thread-0")
     main(path, prefix)
     
-    #all_files = os.listdir(path)
-    #traces = sorted(set(fn.rsplit(".", 2)[0] for fn in all_files if fn.endswith(".rot")))
+
+
 
