@@ -1,0 +1,18 @@
+* gadya - a simple urwid reader
+	* filters
+		* filter out by function name
+		* filter out by module name
+		* filter out by file name
+	* seeking:
+		* seek to end of func
+		* seek to beg of func
+		* seek to time (abs or relative, i.e., 20 seconds before end)
+		* search by file name
+		* search by function name
+		* search by module name
+		* search by argument value
+		* search by retval
+
+* tlib side:
+	* have the logs live between tests (per run of tlib)
+

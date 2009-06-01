@@ -1,4 +1,7 @@
 from __future__ import with_statement
+import sys
+sys.path.insert(0, "/a/home/tomer/xiv")
+
 import passover
 
 
