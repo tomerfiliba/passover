@@ -36,7 +36,7 @@ setup(
     platforms = ["linux"],
     author = "tomer filiba",
     author_email = "tomerfiliba@gmail.com",
-    url = "git://gitserver.xiv/python/passover",
+    url = "git@github.com:tomerfiliba/passover.git",
     long_description = "high performane python tracer",
 )
 

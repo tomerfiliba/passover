@@ -1,0 +1,3 @@
+[submodule "reader/conso"]
+	path = reader/conso
+	url = git@github.com:tomerfiliba/conso.git

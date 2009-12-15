@@ -3,5 +3,7 @@
 *.so
 *.pyc
 *.a
+.project
+.pydevproject
 build/
 test/tmp/
