@@ -88,20 +88,24 @@ class TraceReaderModule(widgets.FramedModule):
             )
         )
 
-    @widgets.action(title = "Add Bookmark", keys = ["b"])
+    @widgets.action(title = "Add Bookmark", keys = ["ctrl b"])
     def action_add_bookmark(self, evt):
         return True
 
-    @widgets.action(title = "Add Filter", keys = ["f"])
+    @widgets.action(title = "Add Filter", keys = ["ctrl f"])
     def action_add_filter(self, evt):
         return True
 
-    @widgets.action(title = "Function Search", keys = ["s"])
+    @widgets.action(title = "Function Search", keys = ["ctrl s"])
     def action_search_func(self, evt):
         return True
 
-    @widgets.action(title = "Go to Time", keys = ["g"])
+    @widgets.action(title = "Go to Time", keys = ["ctrl t"])
     def action_goto_time(self, evt):
+        return True
+
+    @widgets.action(title = "Toggle source viewer", keys = ["ctrl r"])
+    def action_show_source(self, evt):
         return True
 
     @widgets.action(keys = ["["])
@@ -123,15 +127,10 @@ class TraceReaderModule(widgets.FramedModule):
 
 
 
-
 if __name__ == "__main__":
     r = TraceReaderModule()
     app = conso.Application(r)
     app.run(exit = False)
-
-
-
-
 
 
 
