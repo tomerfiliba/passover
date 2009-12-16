@@ -2,10 +2,11 @@ import conso
 from conso import widgets
 
 
-
 class BookmarksModule(widgets.ListModule):
     @widgets.action(title = "Jump", keys = ["enter"])
     def action_jump_selected(self, evt):
+        i = self.get_selected_index()
+        
         return True
 
     @widgets.action(title = "Edit", keys = ["e"])
@@ -48,6 +49,11 @@ class FunctionSearch(InputModule):
     def action_search_fwd(self, evt):
         pass
 
+class FunctionSearchByName(AutoWidget):
+    def __init__(self):
+        pass
+
+
 
 class TimeSearch(InputModule):
     """
@@ -77,6 +83,7 @@ class TraceReaderModule(widgets.FramedModule):
                         ),
                         title = "Traces"
                     ),
+                    priority = 200,
                 ),
                 widgets.BoundingBox(
                     widgets.VLayout(
